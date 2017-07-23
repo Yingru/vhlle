@@ -25,6 +25,7 @@ double EoS::s(double e, double nb, double nq, double ns) {
   return 0.;
 }
 
+
 EoSs::EoSs(string fname, int ncols) {
 #if defined TABLE || defined LAINE_CFO
 

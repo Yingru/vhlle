@@ -37,11 +37,17 @@
 #include "ickw.h"
 #include "trancoeff.h"
 
+#include "icTrento.h"
+
 using namespace std;
 
 // program parameters, to be read from file
 int nx, ny, nz, eosType;
 double xmin, xmax, ymin, ymax, etamin, etamax, tau0, tauMax, dtau;
+
+int ic_nxy, ic_neta;
+double ic_dxy, ic_deta;
+
 char outputDir[255];
 char icInputFile[255];
 double etaS, zetaS, eCrit;
@@ -78,6 +84,16 @@ void readParameters(char *parFile) {
    icModel = atoi(parValue);
   else if (strcmp(parName, "glauberVar") == 0)
    glauberVariable = atoi(parValue);
+
+  else if (strcmp(parName, "ic_nxy") == 0)
+   ic_nxy = atoi(parValue);
+  else if (strcmp(parName, "ic_neta") == 0)
+   ic_neta = atoi(parValue);
+  else if (strcmp(parName, "ic_dxy") == 0)
+   ic_dxy = atof(parValue);
+  else if (strcmp(parName, "ic_deta") == 0)
+   ic_deta = atof(parValue);
+
   else if (strcmp(parName, "xmin") == 0)
    xmin = atof(parValue);
   else if (strcmp(parName, "xmax") == 0)
@@ -129,6 +145,11 @@ void printParameters() {
  cout << "icModel = " << icModel << endl;
  cout << "glauberVar = " << glauberVariable << "   ! 0=epsilon,1=entropy"
       << endl;
+ cout << "ic_nxy = " << ic_nxy << endl;
+ cout << "ic_neta = " << ic_neta << endl;
+ cout << "ic_dxy = " << ic_dxy << endl;
+ cout << "ic_deta = " << ic_deta << endl;
+
  cout << "xmin = " << xmin << endl;
  cout << "xmax = " << xmax << endl;
  cout << "ymin = " << ymin << endl;
@@ -214,6 +235,10 @@ int main(int argc, char **argv) {
  } else if (icModel == 4) {  // analytical Gubser solution
   ICGubser *ic = new ICGubser();
   ic->setIC(f, eos, tau0);
+  delete ic;
+ } else if (icModel == 5) {  // 3D trento IC (or any 3D IC table)
+  ICTrento *ic = new ICTrento(icInputFile, eos, ic_nxy, ic_neta, ic_dxy, ic_deta);
+  ic->setIC(f, tau0);
   delete ic;
  } else {
   cout << "icModel = " << icModel << " not implemented\n";
