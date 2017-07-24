@@ -1,6 +1,6 @@
 outputDir       hydro_output/3D.etas01.zetas01.crossTerms
 
-eosType       1           ! EoS choice: 0 for Laine, 1 for Chiral model, 2 for Bag model
+eosType       3           ! EoS choice: 0 for Laine, 1 for Chiral model, 2 for Bag model, 3 for hotQCD model
 
 etaS      0.1             !  eta/s value
 zetaS     0.1             !  zeta/s, bulk viscosity
@@ -20,6 +20,8 @@ etamax    10.0
 icModel    5
 glauberVar 1       ! reserved for future use
 icInputFile 0.dat
+eosFile eos/eos_hotQCD.dat 
+
 s0ScaleFactor  1  !53.55
 epsilon0   30.0
 impactPar  7.0

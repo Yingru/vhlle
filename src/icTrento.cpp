@@ -9,6 +9,7 @@
 #include "inc.h"
 #include "rmn.h"
 #include "icTrento.h"
+#include "eoChiral_s.h"
 
 using namespace std;
 
@@ -134,6 +135,8 @@ void ICTrento::readFile(char *fileName, EoS *eos)
     int ix, iy, ieta;
     double  sd, ed, nb, t00, t01, t02, t03, check;
     int line = 0;
+/*
+
     while(!fin.eof()){
         fin >> ix >> iy >> ieta >> sd >> t01 >> t02 >> t03 >> check;
         line++;
@@ -142,14 +145,16 @@ void ICTrento::readFile(char *fileName, EoS *eos)
         t02vec_.push_back(t02);
         t03vec_.push_back(t03);
     }
+*/
 
-
-/*
     for (int ix=0; ix < IC_NX_; ix++){
       for (int iy = 0; iy < IC_NY_; iy++){
         for (int ieta = 0; ieta < IC_Neta_; ieta++){
-            fin >> ed;
+            fin >> sd;
             nb = 0.;
+
+            if(sd < 1.0e-8) {ed = 0.;}
+            else eos->gete(sd, ed, nb);
 
             t00 = ed;
             t01 = 0.0;
@@ -164,8 +169,6 @@ void ICTrento::readFile(char *fileName, EoS *eos)
         line ++;
       }
     }
-*/
-    
 }
 
 

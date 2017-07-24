@@ -38,6 +38,7 @@
 #include "trancoeff.h"
 
 #include "icTrento.h"
+#include "eos_hotqcd.h"
 
 using namespace std;
 
@@ -50,6 +51,7 @@ double ic_dxy, ic_deta;
 
 char outputDir[255];
 char icInputFile[255];
+char eosFile[255];
 double etaS, zetaS, eCrit;
 int icModel,
     glauberVariable =
@@ -74,6 +76,8 @@ void readParameters(char *parFile) {
    eosType = atoi(parValue);
   else if (strcmp(parName, "icInputFile") == 0)
    strcpy(icInputFile, parValue);
+  else if (strcmp(parName, "eosFile") == 0)
+   strcpy(eosFile, parValue);
   else if (strcmp(parName, "nx") == 0)
    nx = atoi(parValue);
   else if (strcmp(parName, "ny") == 0)
@@ -139,6 +143,7 @@ void printParameters() {
  cout << "====== parameters ======\n";
  cout << "outputDir = " << outputDir << endl;
  cout << "eosType = " << eosType << endl;
+ cout << "eosFile = " << eosFile << endl;
  cout << "nx = " << nx << endl;
  cout << "ny = " << ny << endl;
  cout << "nz = " << nz << endl;
@@ -206,8 +211,10 @@ int main(int argc, char **argv) {
   eos = new EoSChiral();
  else if (eosType == 2)
   eos = new EoSAZH();
+ else if (eosType == 3)
+  eos = new EoS_hotqcd(eosFile);
  else {
-  cout << "eosType != 0,1,2\n";
+  cout << "eosType != 0,1,2,3\n";
   return 0;
  }
  EoS *eosH = new EoSHadron("eos/eosHadronLog.dat");
