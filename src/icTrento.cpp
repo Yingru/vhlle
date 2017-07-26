@@ -33,6 +33,7 @@ ICTrento::ICTrento(char* fileName, EoS *_eos, int ic_nxy, int ic_neta, double ic
 int ICTrento::findIndex(int ix, int iy, int ieta)
 {
     return IC_Neta_ * IC_NY_ * ix + IC_Neta_ * iy + ieta;
+//      return (IC_NX_ * IC_NY_) * ieta + ix*IC_NY_ + iy;
 }
 
 

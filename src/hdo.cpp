@@ -687,6 +687,20 @@ void Hydro::ISformal() {
      c->addpiH0(3, 1, -(vz / tau1 * c->getpi(0, 1)) * dt / 2.);
      c->addpiH0(3, 2, -(vz / tau1 * c->getpi(0, 2)) * dt / 2.);
      // source from full IS equations (see  draft for the description)
+
+     // Yingru-test, now comment the cross-terms >>>>>>
+     /*
+     for (int i=0; i<4; i++)
+       for (int j=0; j<4; j++){
+         c->addpiH0(i, j, -4./3.* c->getpi(i,j) * du/gamma * dt/2.);
+         for (int k=0; k<4; k++)
+           for (int l=0; l<4; l++)
+             c->addpiH0(i,j,-c->getpi(i,k) * u[j] * u[l] * dmu[l][k] * gmumu[k] / gamma * dt/2. -
+                            c->getpi(j,k) * u[i] * u[l] * dmu[l][k] * gmumu[k] / gamma * dt/2.);
+       }
+     c->addPiH0(-4./3. * c->getPi() * du / gamma * dt / 2.);
+     */
+
      for (int i = 0; i < 4; i++)
       for (int j = 0; j <= i; j++) {
        // now transversality and cross terms
@@ -703,8 +717,11 @@ void Hydro::ISformal() {
         }
        }
       }
+
      c->addPiH0(-delPiPi * c->getPi() * du / gamma * 0.5 * dt);
-     // 1) relaxation(piH)+source(piH) terms for full-step
+ 
+     // Yingru-test, now comment the cross-terms <<<<<<
+    // 1) relaxation(piH)+source(piH) terms for full-step
      for (int i = 0; i < 4; i++)
       for (int j = 0; j <= i; j++) {
 #ifdef FORMAL_SOLUTION
@@ -733,6 +750,21 @@ void Hydro::ISformal() {
      c->addpi0(3, 1, -(vz / tau1 * c->getpiH0(0, 1)) * dt);
      c->addpi0(3, 2, -(vz / tau1 * c->getpiH0(0, 2)) * dt);
      // source from full IS equations (see draft for the description)
+
+     // Yingru-test, now comment the cross terms >>>>>
+     /*
+     for (int i=0; i<4; i++)
+       for (int j=0; j<4; j++){
+         c->addpi0(i, j, -4./3.* c->getpiH0(i,j) * du / gamma * dt / 2.);
+         for (int k=0; k<4; k++)
+           for (int l=0; l<4; l++)
+             c->addpi0(i,j,-c->getpiH0(i,k) * u[j] * u[l] * dmu[l][k] * gmumu[k] / gamma * dt / 2. -
+                            c->getpiH0(j,k) * u[i] * u[l] * dmu[l][k] * gmumu[k] / gamma * dt / 2.);
+       }
+
+      c->addPi0(-4./3. * c->getPiH0() * du / gamma * dt);
+     */
+     
      for (int i = 0; i < 4; i++)
       for (int j = 0; j <= i; j++) {
        // now transversality and cross terms
@@ -749,7 +781,10 @@ void Hydro::ISformal() {
        }
       }
      c->addPi0(-delPiPi * c->getPiH0() * du / gamma * dt);
-    }  // end non-empty cell
+ 
+     // Yingru-test, now comment the cross terms <<<<<
+
+   }  // end non-empty cell
    }   // end loop #1
 
  // 3) -- advection ---
