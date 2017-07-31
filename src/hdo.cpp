@@ -141,10 +141,6 @@ void Hydro::hlle_flux(Cell *left, Cell *right, int direction, int mode) {
  double gammal = 1. / sqrt(1 - vxl * vxl - vyl * vyl - vzl * vzl);
  double gammar = 1. / sqrt(1 - vxr * vxr - vyr * vyr - vzr * vzr);
  
- //debug: Yingru
- //if (gammal > 10) cout << "left: hlle_flux " << gammal << " " << vxl << " " << vyl << " " << vzl << endl;
- //if (gammar > 10) cout << "right: hlle_flux " << gammar << " " << vxr << " " << vyr << " " << vzr << endl;
-
  double gammal2_elpl = gammal * gammal * (el + pl);
  U1l = gammal2_elpl * vxl;
  U2l = gammal2_elpl * vyl;
@@ -295,16 +291,6 @@ void Hydro::hlle_flux(Cell *left, Cell *right, int direction, int mode) {
  }
 
  // update the cumulative fluxes in both neighbouring cells
- //debug Yingru
- /*
- if (abs(flux[T_]) > 5) // gammal>10 || gammar > 10)
- {
-    cout << "left, hlle_flux " << direction << " " << flux[T_] << " " << gammal << " " << tau_dta_dx_blbr << " " << bl << " " << U4l << " " << Ftl << " " <<  el << " " << pl << " " << vxl << " " << vyl << " " << vzl <<  endl;
-
-    cout << "right, hlle_flux " << direction << " " << flux[T_] << " " << gammar << " " << tau_dta_dx_blbr << " " << br << " " << U4r << " " << Ftr << " " << er << " " << pr << " " << vxr << " " << vyr << " " << vzr << " " << (vb+csb)/(1+vb*csb) << " " << (vzr+eos->cs())/(1+vzr*eos->cs()) << endl;
- }
-  */
-
 
  left->addFlux(-flux[T_], -flux[X_], -flux[Y_], -flux[Z_], -flux[NB_],
                -flux[NQ_], -flux[NS_]);
@@ -358,12 +344,6 @@ void Hydro::source_step(int ix, int iy, int iz, int mode) {
   exit(1);
  }
 
- //debug Yingru
- /*
- if (k[T_] > 10)
-    cout << "source: " << k[T_] << " " << k[X_] << " " << k[Y_] <<endl;
- */
-
  c->addFlux(k[T_], k[X_], k[Y_], k[Z_], k[NB_], k[NQ_], k[NS_]);
 }
 
@@ -389,9 +369,6 @@ void Hydro::visc_source_step(int ix, int iy, int iz) {
  k[Z_] = -2.0 * (c->getpiH(0, 3) + c->getPiH() * uuu[0] * uuu[3]) /
          (tau - 0.5 * dt);
  for (int i = 0; i < 4; i++) k[i] *= dt;
- //debug: Yingru
- if (k[T_] > 10)
-    cout << "viscos source: " << k[T_] << " " << k[X_] << " " << k[Z_] << endl;
 
  c->addFlux(k[T_], k[X_], k[Y_], k[Z_], 0., 0., 0.);
 }
@@ -915,17 +892,9 @@ void Hydro::setQfull() {
     uuu[1] = vx * uuu[0];
     uuu[2] = vy * uuu[0];
     uuu[3] = vz * uuu[0];
-    //debug Yingru
-    //if (ix==44 && iy == 59 && iz == 19)
-    //    std::cout << "Hydro:setQfull before " << ix << " " << iy << " " << iz << " " << Q[0] << " " << tau << " " << e << " " << p << " " << vx << " " << vy << " " << vz << " " << uuu[0] <<endl;
-
     for (int i = 0; i < 4; i++)
      Q[i] += -c->getPi() * (gmunu[0][i] - uuu[0] * uuu[i]) + c->getpi(0, i);
     c->setQfull(Q);
-
-    //debug Yingru
-    //if (ix==44 && iy==59 && iz ==19)
-    //    std::cout << "Hydro:setQfull after " << ix << " " << iy << " " << iz << " " << Q[0] << " " << -c->getPi() << " " << c->getpi(0, 0) << " " << gmunu[0][0] - uuu[0]*uuu[0] << endl;
 
    }
 }
@@ -978,10 +947,6 @@ void Hydro::visc_flux(Cell *left, Cell *right, int direction) {
  }
  for (int i = 0; i < 4; i++) flux[i] = flux[i] * dt / dxa;
   
-  //debug Yingru
-  if (abs(flux[T_] > 10))
-      cout << "left, right, visc_flux: " << flux[T_] << " " << flux[X_] << endl;
-
  left->addFlux(-flux[T_], -flux[X_], -flux[Y_], -flux[Z_], 0., 0., 0.);
  right->addFlux(flux[T_], flux[X_], flux[Y_], flux[Z_], 0., 0., 0.);
 }

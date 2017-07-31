@@ -18,7 +18,6 @@
 
 #pragma once
 #include <algorithm>
-#include <iostream>
 #include <iosfwd>
 #include "inc.h"
 
