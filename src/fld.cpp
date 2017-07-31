@@ -46,8 +46,9 @@ void Fluid::getCMFvariables(Cell *c, double tau, double &e, double &nb,
  double eta = getZ(c->getZ());
  //	Y = eta + TMath::ATanH(vz) ;
  Y = eta + 1. / 2. * log((1. + vz) / (1. - vz));
- vx = vx * cosh(Y - eta) / cosh(Y);
- vy = vy * cosh(Y - eta) / cosh(Y);
+ double boost = cosh(Y - eta) / cosh(Y);
+ vx = vx * boost;
+ vy = vy * boost;
 }
 
 Fluid::Fluid(EoS *_eos, EoS *_eosH, TransportCoeff *_trcoeff, int _nx, int _ny,
@@ -439,8 +440,9 @@ void Fluid::outputGnuplot(double tau) {
 // in lab.frame
 void transformToLab(double eta, double &vx, double &vy, double &vz) {
  const double Y = eta + 1. / 2. * log((1. + vz) / (1. - vz));
- vx = vx * cosh(Y - eta) / cosh(Y);
- vy = vy * cosh(Y - eta) / cosh(Y);
+ double boost = cosh(Y-eta)/cosh(Y);
+ vx = vx * boost;
+ vy = vy * boost;
  vz = tanh(Y);
 }
 
@@ -481,12 +483,10 @@ void Fluid::outputSurface(double tau) {
     eta = getZ(iz);
     const double cosh_int = (sinh(eta + 0.5 * dz) - sinh(eta - 0.5 * dz)) / dz;
     const double sinh_int = (cosh(eta + 0.5 * dz) - cosh(eta - 0.5 * dz)) / dz;
-    E += tau * (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-             (cosh_int - tanh(vz) * sinh_int) -
-         tau * p * cosh_int;
+    const double vxvy_tanhvz = 1. - vx*vx - vy*vy - tanh(vz)*tanh(vz);
+    E += tau * (e + p) / vxvy_tanhvz * (cosh_int - tanh(vz) * sinh_int) - tau * p * cosh_int;
     Nb1 += Q[NB_];
-    Nb2 += tau * nb * (cosh_int - tanh(vz) * sinh_int) /
-           sqrt(1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    Nb2 += tau * nb * (cosh_int - tanh(vz) * sinh_int) / sqrt(vxvy_tanhvz);
     //---- inf check
     if (isinf(E)) {
      cout << "EEinf" << setw(14) << e << setw(14) << p << setw(14) << vx
@@ -494,12 +494,9 @@ void Fluid::outputSurface(double tau) {
      exit(1);
     }
     //--------------
-    Efull += tau * (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                 (cosh(eta) - tanh(vz) * sinh(eta)) -
-             tau * p * cosh(eta);
+    Efull += tau * (e + p) / vxvy_tanhvz*(cosh(eta)-tanh(vz)* sinh(eta)) -tau * p * cosh(eta);
     if (trcoeff->isViscous())
-     Efull +=
-         tau * c->getpi(0, 0) * cosh(eta) + tau * c->getpi(0, 3) * sinh(eta);
+     Efull += tau * c->getpi(0, 0) * cosh(eta) + tau * c->getpi(0, 3) * sinh(eta);
     if (e > ecrit) {
      nCoreCells++;
      if (c->getViscCorrCutFlag() < 0.9) nCoreCutCells++;
@@ -511,24 +508,31 @@ void Fluid::outputSurface(double tau) {
      for (int i = 0; i < 4; i++)
       for (int j = 0; j < 4; j++)
        deltas += pow(c->getpi(i, j), 2) * gmumu[i] * gmumu[j];
+
     if (t > 0.02) {
-     s += 1.5 * deltas / ((e + p) * t);
-     S += tau * s * (cosh_int - tanh(vz) * sinh_int) /
-          sqrt(1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+      s += 1.5 * deltas / ((e + p) * t);
+      S += tau * s * (cosh_int - tanh(vz) * sinh_int) / sqrt(vxvy_tanhvz);
     }
-    Px += tau * (e + p) * vx / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+
+
+     // Yingru debug
+     /*
+     if (ix== int(nx/2) && iy==int(ny/2) && iz==int(nz/2))
+     {
+        std::cout <<"debug: p: " << p << ", deltas: " << deltas << ", s: " << s << ", S: " << S  << std::endl;
+ 
+     }
+    */
+
+    Px += tau * (e + p) * vx / vxvy_tanhvz;
     vt_num += e / sqrt(1. - vx * vx - vy * vy) * sqrt(vx * vx + vy * vy);
     vt_den += e / sqrt(1. - vx * vx - vy * vy);
     vxvy_num += e * (fabs(vx) - fabs(vy));
     vxvy_den += e;
-    txxyy_num += (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                 (vx * vx - vy * vy);
-    txxyy_den += (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                     (vx * vx + vy * vy) +
-                 2. * p;
-    pi0x_num += e / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                fabs(c->getpi(0, 1));
-    pi0x_den += e / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    txxyy_num += (e + p) / vxvy_tanhvz * (vx * vx - vy * vy);
+    txxyy_den += (e + p) / vxvy_tanhvz * (vx * vx + vy * vy) + 2. * p;
+    pi0x_num += e / vxvy_tanhvz * fabs(c->getpi(0, 1));
+    pi0x_den += e / vxvy_tanhvz;
     //----- Cornelius stuff
     double QCube[2][2][2][2][7];
     double piSquare[2][2][2][10], PiSquare[2][2][2];
@@ -588,6 +592,8 @@ void Fluid::outputSurface(double tau) {
      eos->eos(eC, nbC, nqC, _ns, TC, mubC, muqC, musC, pC);
      if (TC > 0.4 || fabs(mubC) > 0.85) {
       cout << "#### Error (surface): high T/mu_b ####\n";
+      // Yingru debug
+      cout << "transform: " << eC << " " << nbC << " " << nqC << " " << _ns << " " << TC << " " << mubC << " " << muqC << " " << musC << " " << pC << endl;
      }
      if (eC > ecrit * 2.0 || eC < ecrit * 0.5) nsusp++;
      for (int jx = 0; jx < 2; jx++)
@@ -717,12 +723,11 @@ void Fluid::outputCorona(double tau) {
     eta = getZ(iz);
     const double cosh_int = (sinh(eta + 0.5 * dz) - sinh(eta - 0.5 * dz)) / dz;
     const double sinh_int = (cosh(eta + 0.5 * dz) - cosh(eta - 0.5 * dz)) / dz;
-    E += tau * (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-             (cosh_int - tanh(vz) * sinh_int) -
-         tau * p * cosh_int;
+    const double vxvy_tanhvz = 1. - vx*vx - vy*vy - tanh(vz)*tanh(vz);
+
+    E += tau * (e + p) / vxvy_tanhvz * (cosh_int - tanh(vz) * sinh_int) - tau * p * cosh_int;
     Nb1 += Q[NB_];
-    Nb2 += tau * nb * (cosh_int - tanh(vz) * sinh_int) /
-           sqrt(1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    Nb2 += tau * nb * (cosh_int - tanh(vz) * sinh_int) / sqrt(vxvy_tanhvz);
     //---- inf check
     if (isinf(E)) {
      cout << "EEinf" << setw(14) << e << setw(14) << p << setw(14) << vx
@@ -730,12 +735,9 @@ void Fluid::outputCorona(double tau) {
      exit(1);
     }
     //--------------
-    Efull += tau * (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                 (cosh(eta) - tanh(vz) * sinh(eta)) -
-             tau * p * cosh(eta);
+    Efull += tau * (e + p)/ vxvy_tanhvz *(cosh(eta) - tanh(vz) * sinh(eta)) - tau * p * cosh(eta);
     if (trcoeff->isViscous())
-     Efull +=
-         tau * c->getpi(0, 0) * cosh(eta) + tau * c->getpi(0, 3) * sinh(eta);
+     Efull += tau * c->getpi(0, 0) * cosh(eta) + tau * c->getpi(0, 3) * sinh(eta);
     // -- noneq. corrections to entropy flux
     const double gmumu[4] = {1., -1., -1., -1.};
     double deltas = 0.;
@@ -745,22 +747,17 @@ void Fluid::outputCorona(double tau) {
        deltas += pow(c->getpi(i, j), 2) * gmumu[i] * gmumu[j];
     if (t > 0.02) {
      s += 1.5 * deltas / ((e + p) * t);
-     S += tau * s * (cosh_int - tanh(vz) * sinh_int) /
-          sqrt(1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+     S += tau * s * (cosh_int - tanh(vz) * sinh_int) / sqrt(vxvy_tanhvz);
     }
-    Px += tau * (e + p) * vx / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    Px += tau * (e + p) * vx / vxvy_tanhvz;
     vt_num += e / sqrt(1. - vx * vx - vy * vy) * sqrt(vx * vx + vy * vy);
     vt_den += e / sqrt(1. - vx * vx - vy * vy);
     vxvy_num += e * (fabs(vx) - fabs(vy));
     vxvy_den += e;
-    txxyy_num += (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                 (vx * vx - vy * vy);
-    txxyy_den += (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                     (vx * vx + vy * vy) +
-                 2. * p;
-    pi0x_num += e / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                fabs(c->getpi(0, 1));
-    pi0x_den += e / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    txxyy_num += (e + p) / vxvy_tanhvz * (vx * vx - vy * vy);
+    txxyy_den += (e + p) / vxvy_tanhvz * (vx * vx + vy * vy) + 2. * p;
+    pi0x_num += e / vxvy_tanhvz * fabs(c->getpi(0, 1));
+    pi0x_den += e / vxvy_tanhvz;
 
     //----- Cornelius stuff
     bool isCorona = true, isTail = true;
@@ -805,6 +802,7 @@ void Fluid::outputCorona(double tau) {
      eos->eos(eC, nbC, nqC, _ns, TC, mubC, muqC, musC, pC);
      if (TC > 0.4 || fabs(mubC) > 0.85) {
       cout << "#### Error (surface): high T/mu_b ####\n";
+      cout << "corona: " << eC << " " << nbC << " " << nqC << " " << _ns << " " << TC << " " << mubC << " " << muqC << " " << musC << " " << pC << endl;
      }
      for (int jx = 0; jx < 2; jx++)
       for (int jy = 0; jy < 2; jy++)

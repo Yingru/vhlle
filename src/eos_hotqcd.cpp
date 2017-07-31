@@ -25,7 +25,7 @@ EoS_hotqcd::EoS_hotqcd(char* fileName)
     }
     e_min = etab[0];
     devene = etab[1] - etab[0];
-    std::cout << "EoS qcd read in: e_min = " << e_min << ", d-even-e = " << devene << std::endl;
+    std::cout << "EoS qcd read in: e_min = " << e_min << ", d-even-e = " << devene<< ", e_max = " << etab[etab.size()-1] << std::endl;
 }
 
 

@@ -26,7 +26,6 @@ ICTrento::ICTrento(char* fileName, EoS *_eos, int ic_nxy, int ic_neta, double ic
 {
     eos = _eos;
     readFile(fileName, eos);
-    std::cout << "read in IC files correctly" << std::endl;
 }
 
 
@@ -119,6 +118,9 @@ void ICTrento::setIC(Fluid *f, double tau)
         }
       }
     }
+
+    std::cout << "Initial total energy: " << Etotal << ", avv_num: " << avv_num << ", avv_den: " << avv_den << std::endl;
+    std::cout << "Initial condition set up successfully :)" << std::endl;
 }
 
 

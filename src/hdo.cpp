@@ -140,18 +140,25 @@ void Hydro::hlle_flux(Cell *left, Cell *right, int direction, int mode) {
 
  double gammal = 1. / sqrt(1 - vxl * vxl - vyl * vyl - vzl * vzl);
  double gammar = 1. / sqrt(1 - vxr * vxr - vyr * vyr - vzr * vzr);
- U1l = gammal * gammal * (el + pl) * vxl;
- U2l = gammal * gammal * (el + pl) * vyl;
- U3l = gammal * gammal * (el + pl) * vzl;
- U4l = gammal * gammal * (el + pl) - pl;
+ 
+ //debug: Yingru
+ //if (gammal > 10) cout << "left: hlle_flux " << gammal << " " << vxl << " " << vyl << " " << vzl << endl;
+ //if (gammar > 10) cout << "right: hlle_flux " << gammar << " " << vxr << " " << vyr << " " << vzr << endl;
+
+ double gammal2_elpl = gammal * gammal * (el + pl);
+ U1l = gammal2_elpl * vxl;
+ U2l = gammal2_elpl * vyl;
+ U3l = gammal2_elpl * vzl;
+ U4l = gammal2_elpl - pl;
  Ubl = gammal * nbl;
  Uql = gammal * nql;
  Usl = gammal * nsl;
 
- U1r = gammar * gammar * (er + pr) * vxr;
- U2r = gammar * gammar * (er + pr) * vyr;
- U3r = gammar * gammar * (er + pr) * vzr;
- U4r = gammar * gammar * (er + pr) - pr;
+ double gammar2_erpr = gammar * gammar * (er + pr);
+ U1r = gammar2_erpr * vxr;
+ U2r = gammar2_erpr * vyr;
+ U3r = gammar2_erpr * vzr;
+ U4r = gammar2_erpr - pr;
  Ubr = gammar * nbr;
  Uqr = gammar * nqr;
  Usr = gammar * nsr;
@@ -263,20 +270,14 @@ void Hydro::hlle_flux(Cell *left, Cell *right, int direction, int mode) {
  if (bl == 0. && br == 0.) return;
 
  // finally, HLLE formula for the fluxes
- flux[T_] = tauFactor * dta / dx *
-            (-bl * br * (U4l - U4r) + br * Ftl - bl * Ftr) / (-bl + br);
- flux[X_] = tauFactor * dta / dx *
-            (-bl * br * (U1l - U1r) + br * Fxl - bl * Fxr) / (-bl + br);
- flux[Y_] = tauFactor * dta / dx *
-            (-bl * br * (U2l - U2r) + br * Fyl - bl * Fyr) / (-bl + br);
- flux[Z_] = tauFactor * dta / dx *
-            (-bl * br * (U3l - U3r) + br * Fzl - bl * Fzr) / (-bl + br);
- flux[NB_] = tauFactor * dta / dx *
-             (-bl * br * (Ubl - Ubr) + br * Fbl - bl * Fbr) / (-bl + br);
- flux[NQ_] = tauFactor * dta / dx *
-             (-bl * br * (Uql - Uqr) + br * Fql - bl * Fqr) / (-bl + br);
- flux[NS_] = tauFactor * dta / dx *
-             (-bl * br * (Usl - Usr) + br * Fsl - bl * Fsr) / (-bl + br);
+ double tau_dta_dx_blbr = tauFactor * dta / dx / (-bl + br);
+ flux[T_] = tau_dta_dx_blbr * (-bl * br * (U4l - U4r) + br * Ftl - bl * Ftr);
+ flux[X_] = tau_dta_dx_blbr * (-bl * br * (U1l - U1r) + br * Fxl - bl * Fxr);
+ flux[Y_] = tau_dta_dx_blbr * (-bl * br * (U2l - U2r) + br * Fyl - bl * Fyr);
+ flux[Z_] = tau_dta_dx_blbr * (-bl * br * (U3l - U3r) + br * Fzl - bl * Fzr);
+ flux[NB_] = tau_dta_dx_blbr * (-bl * br * (Ubl - Ubr) + br * Fbl - bl * Fbr);
+ flux[NQ_] = tau_dta_dx_blbr * (-bl * br * (Uql - Uqr) + br * Fql - bl * Fqr);
+ flux[NS_] = tau_dta_dx_blbr * (-bl * br * (Usl - Usr) + br * Fsl - bl * Fsr);
 
  if (flux[NB_] != flux[NB_]) {  // if things failed
   cout << "---- error in hlle_flux: f_nb undefined!\n";
@@ -294,6 +295,17 @@ void Hydro::hlle_flux(Cell *left, Cell *right, int direction, int mode) {
  }
 
  // update the cumulative fluxes in both neighbouring cells
+ //debug Yingru
+ /*
+ if (abs(flux[T_]) > 5) // gammal>10 || gammar > 10)
+ {
+    cout << "left, hlle_flux " << direction << " " << flux[T_] << " " << gammal << " " << tau_dta_dx_blbr << " " << bl << " " << U4l << " " << Ftl << " " <<  el << " " << pl << " " << vxl << " " << vyl << " " << vzl <<  endl;
+
+    cout << "right, hlle_flux " << direction << " " << flux[T_] << " " << gammar << " " << tau_dta_dx_blbr << " " << br << " " << U4r << " " << Ftr << " " << er << " " << pr << " " << vxr << " " << vyr << " " << vzr << " " << (vb+csb)/(1+vb*csb) << " " << (vzr+eos->cs())/(1+vzr*eos->cs()) << endl;
+ }
+  */
+
+
  left->addFlux(-flux[T_], -flux[X_], -flux[Y_], -flux[Z_], -flux[NB_],
                -flux[NQ_], -flux[NS_]);
  right->addFlux(flux[T_], flux[X_], flux[Y_], flux[Z_], flux[NB_], flux[NQ_],
@@ -345,6 +357,13 @@ void Hydro::source_step(int ix, int iy, int iz, int mode) {
   cout << setw(12) << k[4] << setw(12) << k[5] << setw(12) << k[6] << endl;
   exit(1);
  }
+
+ //debug Yingru
+ /*
+ if (k[T_] > 10)
+    cout << "source: " << k[T_] << " " << k[X_] << " " << k[Y_] <<endl;
+ */
+
  c->addFlux(k[T_], k[X_], k[Y_], k[Z_], k[NB_], k[NQ_], k[NS_]);
 }
 
@@ -370,6 +389,10 @@ void Hydro::visc_source_step(int ix, int iy, int iz) {
  k[Z_] = -2.0 * (c->getpiH(0, 3) + c->getPiH() * uuu[0] * uuu[3]) /
          (tau - 0.5 * dt);
  for (int i = 0; i < 4; i++) k[i] *= dt;
+ //debug: Yingru
+ if (k[T_] > 10)
+    cout << "viscos source: " << k[T_] << " " << k[X_] << " " << k[Z_] << endl;
+
  c->addFlux(k[T_], k[X_], k[Y_], k[Z_], 0., 0., 0.);
 }
 
@@ -654,25 +677,25 @@ void Hydro::ISformal() {
      u[2] = u[0] * vy;
      u[3] = u[0] * vz;
      double Delta[10];
+     double dt_gamma_taupi = dt/2.0/gamma/taupi;
+     double exp_dt_gamma_taupi = exp(-dt_gamma_taupi);
+     double dt_gamma_tauPi = dt/2.0/gamma/tauPi;
+     double exp_dt_gamma_tauPi = exp(-dt_gamma_tauPi);
      // relaxation term, piH,PiH-->half-step
      for (int i = 0; i < 4; i++)
       for (int j = 0; j <= i; j++) {
        Delta[index44(i, j)] = -u[i] * u[j];
        if (i == j) Delta[index44(i, j)] += gmumu[i];
 #ifdef FORMAL_SOLUTION
-       c->setpiH0(i, j, (c->getpi(i, j) - piNS[i][j]) *
-                                exp(-dt / 2.0 / gamma / taupi) +
-                            piNS[i][j]);
+       c->setpiH0(i, j, (c->getpi(i, j) - piNS[i][j]) * exp_dt_gamma_taupi + piNS[i][j]);
 #else
-       c->setpiH0(i, j,
-                  c->getpi(i, j) -
-                      (c->getpi(i, j) - piNS[i][j]) * dt / 2.0 / gamma / taupi);
+       c->setpiH0(i, j, c->getpi(i, j) - (c->getpi(i, j) - piNS[i][j]) * dt_gamma_taupi);
 #endif
       }
 #ifdef FORMAL_SOLUTION
-     c->setPiH0((c->getPi() - PiNS) * exp(-dt / 2.0 / gamma / tauPi) + PiNS);
+     c->setPiH0((c->getPi() - PiNS) * exp_dt_gamma_tauPi + PiNS);
 #else
-     c->setPiH0(c->getPi() - (c->getPi() - PiNS) * dt / 2.0 / gamma / tauPi);
+     c->setPiH0(c->getPi() - (c->getPi() - PiNS) * dt_gamma_tauPi);
 #endif
      // sources from Christoffel symbols from \dot pi_munu
      double tau1 = tau - dt * 0.75;
@@ -719,25 +742,25 @@ void Hydro::ISformal() {
       }
 
      c->addPiH0(-delPiPi * c->getPi() * du / gamma * 0.5 * dt);
- 
+
      // Yingru-test, now comment the cross-terms <<<<<<
     // 1) relaxation(piH)+source(piH) terms for full-step
+    double dt_gamma_taupi2 = dt/gamma/taupi;
+    double exp_dt_gamma_taupi2 = exp(-dt_gamma_taupi2);
+    double dt_gamma_tauPi2 = dt/gamma/tauPi;
+    double exp_dt_gamma_tauPi2 = exp(-dt_gamma_tauPi2);
      for (int i = 0; i < 4; i++)
       for (int j = 0; j <= i; j++) {
 #ifdef FORMAL_SOLUTION
-       c->setpi0(i, j,
-                 (c->getpi(i, j) - piNS[i][j]) * exp(-dt / gamma / taupi) +
-                     piNS[i][j]);
+       c->setpi0(i, j, (c->getpi(i, j) - piNS[i][j]) * exp_dt_gamma_taupi2 + piNS[i][j]);
 #else
-       c->setpi0(i, j,
-                 c->getpi(i, j) -
-                     (c->getpiH0(i, j) - piNS[i][j]) * dt / gamma / taupi);
+       c->setpi0(i, j, c->getpi(i, j) - (c->getpiH0(i, j) - piNS[i][j]) * dt_gamma_taupi2);
 #endif
       }
 #ifdef FORMAL_SOLUTION
-     c->setPi0((c->getPi() - PiNS) * exp(-dt / gamma / tauPi) + PiNS);
+     c->setPi0((c->getPi() - PiNS) * exp_dt_gamma_tauPi2 + PiNS);
 #else
-     c->setPi0(c->getPi() - (c->getPiH0() - PiNS) * dt / gamma / tauPi);
+     c->setPi0(c->getPi() - (c->getPiH0() - PiNS) * dt_gamma_tauPi2);
 #endif
      tau1 = tau - dt * 0.5;
      c->addpi0(0, 0, -2. * vz / tau1 * c->getpiH0(0, 3) * dt);  // *gamma/gamma
@@ -752,7 +775,7 @@ void Hydro::ISformal() {
      // source from full IS equations (see draft for the description)
 
      // Yingru-test, now comment the cross terms >>>>>
-     /*
+    /*
      for (int i=0; i<4; i++)
        for (int j=0; j<4; j++){
          c->addpi0(i, j, -4./3.* c->getpiH0(i,j) * du / gamma * dt / 2.);
@@ -763,8 +786,9 @@ void Hydro::ISformal() {
        }
 
       c->addPi0(-4./3. * c->getPiH0() * du / gamma * dt);
-     */
-     
+    */
+
+
      for (int i = 0; i < 4; i++)
       for (int j = 0; j <= i; j++) {
        // now transversality and cross terms
@@ -781,7 +805,7 @@ void Hydro::ISformal() {
        }
       }
      c->addPi0(-delPiPi * c->getPiH0() * du / gamma * dt);
- 
+
      // Yingru-test, now comment the cross terms <<<<<
 
    }  // end non-empty cell
@@ -891,9 +915,18 @@ void Hydro::setQfull() {
     uuu[1] = vx * uuu[0];
     uuu[2] = vy * uuu[0];
     uuu[3] = vz * uuu[0];
+    //debug Yingru
+    //if (ix==44 && iy == 59 && iz == 19)
+    //    std::cout << "Hydro:setQfull before " << ix << " " << iy << " " << iz << " " << Q[0] << " " << tau << " " << e << " " << p << " " << vx << " " << vy << " " << vz << " " << uuu[0] <<endl;
+
     for (int i = 0; i < 4; i++)
      Q[i] += -c->getPi() * (gmunu[0][i] - uuu[0] * uuu[i]) + c->getpi(0, i);
     c->setQfull(Q);
+
+    //debug Yingru
+    //if (ix==44 && iy==59 && iz ==19)
+    //    std::cout << "Hydro:setQfull after " << ix << " " << iy << " " << iz << " " << Q[0] << " " << -c->getPi() << " " << c->getpi(0, 0) << " " << gmunu[0][0] - uuu[0]*uuu[0] << endl;
+
    }
 }
 
@@ -944,6 +977,11 @@ void Hydro::visc_flux(Cell *left, Cell *right, int direction) {
       0.5 * (left->getPiH() + right->getPiH()) * uuu[ind1] * uuu[ind2];
  }
  for (int i = 0; i < 4; i++) flux[i] = flux[i] * dt / dxa;
+  
+  //debug Yingru
+  if (abs(flux[T_] > 10))
+      cout << "left, right, visc_flux: " << flux[T_] << " " << flux[X_] << endl;
+
  left->addFlux(-flux[T_], -flux[X_], -flux[Y_], -flux[Z_], 0., 0., 0.);
  right->addFlux(flux[T_], flux[X_], flux[Y_], flux[Z_], 0., 0., 0.);
 }

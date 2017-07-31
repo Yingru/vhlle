@@ -18,8 +18,10 @@
 
 #pragma once
 #include <algorithm>
+#include <iostream>
 #include <iosfwd>
 #include "inc.h"
+
 class EoS;
 
 // returns an index of pi^{mu nu} mu,nu component in a plain 1D array

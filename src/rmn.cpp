@@ -44,7 +44,9 @@ void transformPV(EoS *eos, double Q[7], double &e, double &p, double &nb,
   cout << setw(14) << Q[4] << setw(14) << Q[5] << setw(14) << Q[6] << endl;
  }
  double M = sqrt(Q[X_] * Q[X_] + Q[Y_] * Q[Y_] + Q[Z_] * Q[Z_]);
+ // Yingru & Jussi (numerical stable)
  if (Q[T_] <= 0.) {
+ //if (Q[T_] <= 0.0001) {
   e = 0.;
   p = 0.;
   vx = vy = vz = 0.;
@@ -110,7 +112,7 @@ void transformPV(EoS *eos, double Q[7], double &e, double &p, double &nb,
    vl = v;
   if (nb != nb)
    cout << "transformCV:nbInf " << i << "  " << e << "  " << nb << "  " << nq
-        << "  " << ns << "  " << p << "  " << v << endl;
+        << "  " << ns << "  " << p << "  " << v << " " << vx << " " << vy << " " << vz << endl;
   if (debugRiemann)
    cout << "step " << i << "  " << e << "  " << nb << "  " << nq << "  " << ns
         << "  " << p << "  " << vx << "  " << vy << "  " << vz << endl;
@@ -152,7 +154,9 @@ void transformPVBulk(EoS *eos, double Pi, double Q[7], double &e, double &p,
   cout << setw(14) << Q[4] << setw(14) << Q[5] << setw(14) << Q[6] << endl;
  }
  double M = sqrt(Q[X_] * Q[X_] + Q[Y_] * Q[Y_] + Q[Z_] * Q[Z_]);
+ // Yingru & Jussi (numerical stable)
  if (Q[T_] <= 0.) {
+ //if (Q[T_] <= 0.0001) {
   e = 0.;
   p = 0.;
   vx = vy = vz = 0.;
@@ -217,8 +221,15 @@ void transformPVBulk(EoS *eos, double Pi, double Q[7], double &e, double &p,
   else
    vl = v;
   if (nb != nb)
-   cout << "step " << i << "  " << e << "  " << nb << "  " << nq << "  " << ns
+  {// Yingru debug:
+   cout << "step BULK " << i << "  " << e << "  " << nb << "  " << nq << "  " << ns
         << "  " << p << "  " << v << endl;
+   
+   cout << "transformBulk: " << Q[T_] << " " << M << " " << vh << " " << vl << " " << dv << " " << 
+Pi << " " << p << " " << f << " " << df << endl;
+
+   }
+
   if (debugRiemann)
    cout << "step " << i << "  " << e << "  " << nb << "  " << nq << "  " << ns
         << "  " << p << "  " << vx << "  " << vy << "  " << vz << endl;

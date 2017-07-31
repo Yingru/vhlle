@@ -53,7 +53,11 @@ Cell::Cell() {
 }
 
 void Cell::updateByFlux() {
+ // debug Yingru
+ //if (ix==44 && iy==59 && iz==19)  cout << "Cell::updateByFlux: before " << ix << " " << iy << " " << iz <<" " <<  Q[0] << " " << flux[0] << endl; 
  for (int i = 0; i < 7; i++) Q[i] += flux[i];
+
+ //if (ix==44 && iy==59 && iz==19)   cout << "Cell::updateByFlux: after " << ix << " " << iy << " " << iz << " " << Q[0] << " " << flux[0] << endl;
 }
 
 void Cell::updateQtoQhByFlux() {
@@ -61,20 +65,38 @@ void Cell::updateQtoQhByFlux() {
 }
 
 void Cell::updateQfullByFlux() {
+ // debug Yingru
+ //if (Qfull[0] > 1000)
+ //if (ix == 44 && iy == 59 && iz == 19)    std::cout << "updateQfullByFlux: before " << ix << " " << iy << " " << iz << " " << Qfull[0] << " " << flux[0] << endl;
+
  for (int i = 0; i < 7; i++) Qfull[i] += flux[i];
+
+ // debug Yingru
+ //if (Qfull[0] > 1000)
+ //if (ix == 44 && iy == 59 && iz ==19)    std::cout << "updateQfullByFlux: after " << ix << " " << iy << " " << iz << " " << Qfull[0] << " " << flux[0] << endl;
 }
 
 void Cell::correctQideal(EoS *eos, double tau) {
  double e, p, nb, nq, ns, vx, vy, vz;
  getPrimVarFull(eos, e, p, nb, nq, ns, vx, vy, vz);
- const double gamma2 = 1. / (1 - vx * vx - vy * vy - vz * vz);
+ //debug Yingru (test)
+ double v2 = vx*vx + vy*vy + vz*vz;
+ if (v2 > 0.9999)  v2 = 0.9999;
+ 
+ const double gamma2 = 1./(1-v2);
+ const double tau_ep_gamma2 = tau * (e+p) * gamma2;
+ const double tau_gamma = tau * sqrt(gamma2);
  Q[T_] = tau * (e + p * (vx * vx + vy * vy + vz * vz)) * gamma2;
- Q[X_] = tau * (e + p) * vx * gamma2;
- Q[Y_] = tau * (e + p) * vy * gamma2;
- Q[Z_] = tau * (e + p) * vz * gamma2;
- Q[NB_] = tau * nb * sqrt(gamma2);
- Q[NQ_] = tau * nq * sqrt(gamma2);
- Q[NS_] = tau * ns * sqrt(gamma2);
+// debug Yingru
+// if (ix==44 && iy==59 && iz==19)
+//    cout << "Cell: correctQideal: Q[0]: " << Q[T_] << ", e:" << e <<  ", p:" << p << ", tau: " << tau << ", gamma2: " << gamma2 << endl;
+
+ Q[X_] = tau_ep_gamma2 * vx;
+ Q[Y_] = tau_ep_gamma2 * vy;
+ Q[Z_] = tau_ep_gamma2 * vz;
+ Q[NB_] = tau_gamma * nb;
+ Q[NQ_] = tau_gamma * nq;
+ Q[NS_] = tau_gamma * ns;
 }
 
 void Cell::getPrimVar(EoS *eos, double tau, double &_e, double &_p, double &_nb,
@@ -205,6 +227,10 @@ void Cell::getPrimVarFull(EoS *eos, double &_e, double &_p, double &_nb,
  double Qideal[7];
  for (int i = 0; i < 4; i++) Qideal[i] = Qfull[i] - pi[index44(0, i)];
  for (int i = 4; i < 7; i++) Qideal[i] = Qfull[i];
+ // debug: Yingru
+ // if (Qideal[0] > 1000)
+ //   cout <<" getPrimVarFull " << ix << " " << iy << " " << iz <<  " " <<  Qideal[0] << " " << Qfull[0] << " " << pi[index44(0, 0)] << " " << Qideal[1] << " " << Qfull[1] << " " << pi[index44(0, 1)] << endl;
+
  transformPVBulk(eos, Pi, Qideal, _e, _p, _nb, _nq, _ns, _vx, _vy, _vz);
  //-------------------- debug ---------------
  if (_nb != _nb) {
@@ -216,15 +242,19 @@ void Cell::getPrimVarFull(EoS *eos, double &_e, double &_p, double &_nb,
 
 void Cell::setPrimVar(EoS *eos, double tau, double _e, double _nb, double _nq,
                       double _ns, double _vx, double _vy, double _vz) {
- const double gamma2 = 1. / (1 - _vx * _vx - _vy * _vy - _vz * _vz);
+ const double v2 = _vx*_vx + _vy*_vy + _vz*_vz;
+ const double gamma2 = 1./(1 - v2);
  const double p = eos->p(_e, _nb, _nq, _ns);
+ const double tau_ep_gamma2 = tau*(_e+p) * gamma2;
+ const double tau_gamma = tau * sqrt(gamma2);
+
  Q[T_] = tau * (_e + p * (_vx * _vx + _vy * _vy + _vz * _vz)) * gamma2;
- Q[X_] = tau * (_e + p) * _vx * gamma2;
- Q[Y_] = tau * (_e + p) * _vy * gamma2;
- Q[Z_] = tau * (_e + p) * _vz * gamma2;
- Q[NB_] = tau * _nb * sqrt(gamma2);
- Q[NQ_] = tau * _nq * sqrt(gamma2);
- Q[NS_] = tau * _ns * sqrt(gamma2);
+ Q[X_] = tau_ep_gamma2 * _vx;
+ Q[Y_] = tau_ep_gamma2 * _vy;
+ Q[Z_] = tau_ep_gamma2 * _vz;
+ Q[NB_] = tau_gamma * _nb;
+ Q[NQ_] = tau_gamma * _nq;
+ Q[NS_] = tau_gamma * _ns;
  if (Q[NB_] != Q[NB_]) {
   cout << "init error!\n";
   eos->p(_e, _nb, _nq, _ns);
