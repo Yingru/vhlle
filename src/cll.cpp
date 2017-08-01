@@ -69,7 +69,13 @@ void Cell::correctQideal(EoS *eos, double tau) {
  getPrimVarFull(eos, e, p, nb, nq, ns, vx, vy, vz);
  //debug Yingru (test)
  double v2 = vx*vx + vy*vy + vz*vz;
- if (v2 > 0.9999)  v2 = 0.9999;
+ if (v2 > 0.9999)  
+ {
+    vx = sqrt(0.9999/v2) * vx;
+    vy = sqrt(0.9999/v2) * vy;
+    vz = sqrt(0.9999/v2) * vz;
+    v2 = 0.9999;
+ }
  
  const double gamma2 = 1./(1-v2);
  const double tau_ep_gamma2 = tau * (e+p) * gamma2;

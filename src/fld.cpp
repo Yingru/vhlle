@@ -515,15 +515,6 @@ void Fluid::outputSurface(double tau) {
     }
 
 
-     // Yingru debug
-     /*
-     if (ix== int(nx/2) && iy==int(ny/2) && iz==int(nz/2))
-     {
-        std::cout <<"debug: p: " << p << ", deltas: " << deltas << ", s: " << s << ", S: " << S  << std::endl;
- 
-     }
-    */
-
     Px += tau * (e + p) * vx / vxvy_tanhvz;
     vt_num += e / sqrt(1. - vx * vx - vy * vy) * sqrt(vx * vx + vy * vy);
     vt_den += e / sqrt(1. - vx * vx - vy * vy);
@@ -592,7 +583,6 @@ void Fluid::outputSurface(double tau) {
      eos->eos(eC, nbC, nqC, _ns, TC, mubC, muqC, musC, pC);
      if (TC > 0.4 || fabs(mubC) > 0.85) {
       cout << "#### Error (surface): high T/mu_b ####\n";
-      // Yingru debug
       cout << "transform: " << eC << " " << nbC << " " << nqC << " " << _ns << " " << TC << " " << mubC << " " << muqC << " " << musC << " " << pC << endl;
      }
      if (eC > ecrit * 2.0 || eC < ecrit * 0.5) nsusp++;
