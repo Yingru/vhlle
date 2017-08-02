@@ -46,8 +46,9 @@ void Fluid::getCMFvariables(Cell *c, double tau, double &e, double &nb,
  double eta = getZ(c->getZ());
  //	Y = eta + TMath::ATanH(vz) ;
  Y = eta + 1. / 2. * log((1. + vz) / (1. - vz));
- vx = vx * cosh(Y - eta) / cosh(Y);
- vy = vy * cosh(Y - eta) / cosh(Y);
+ double boost = cosh(Y - eta) / cosh(Y);
+ vx = vx * boost;
+ vy = vy * boost;
 }
 
 Fluid::Fluid(EoS *_eos, EoS *_eosH, TransportCoeff *_trcoeff, int _nx, int _ny,
@@ -439,8 +440,9 @@ void Fluid::outputGnuplot(double tau) {
 // in lab.frame
 void transformToLab(double eta, double &vx, double &vy, double &vz) {
  const double Y = eta + 1. / 2. * log((1. + vz) / (1. - vz));
- vx = vx * cosh(Y - eta) / cosh(Y);
- vy = vy * cosh(Y - eta) / cosh(Y);
+ const double boost = cosh(Y - eta) / cosh(Y);
+ vx = vx * boost;
+ vy = vy * boost;
  vz = tanh(Y);
 }
 
@@ -481,12 +483,10 @@ void Fluid::outputSurface(double tau) {
     eta = getZ(iz);
     const double cosh_int = (sinh(eta + 0.5 * dz) - sinh(eta - 0.5 * dz)) / dz;
     const double sinh_int = (cosh(eta + 0.5 * dz) - cosh(eta - 0.5 * dz)) / dz;
-    E += tau * (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-             (cosh_int - tanh(vz) * sinh_int) -
-         tau * p * cosh_int;
+    const double vxvy_tanhvz = vx*vx + vy*vy + tanh(vz)*tanh(vz);
+    E += tau * (e + p) / (1. - vxvy_tanhvz) * (cosh_int - tanh(vz) * sinh_int) - tau * p * cosh_int;
     Nb1 += Q[NB_];
-    Nb2 += tau * nb * (cosh_int - tanh(vz) * sinh_int) /
-           sqrt(1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    Nb2 += tau * nb * (cosh_int - tanh(vz) * sinh_int) / sqrt(1. - vxvy_tanhvz);
     //---- inf check
     if (isinf(E)) {
      cout << "EEinf" << setw(14) << e << setw(14) << p << setw(14) << vx
@@ -494,9 +494,7 @@ void Fluid::outputSurface(double tau) {
      exit(1);
     }
     //--------------
-    Efull += tau * (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                 (cosh(eta) - tanh(vz) * sinh(eta)) -
-             tau * p * cosh(eta);
+    Efull += tau * (e + p) / (1.-vxvy_tanhvz) * (cosh(eta) - tanh(vz) * sinh(eta))-tau * p * cosh(eta);
     if (trcoeff->isViscous())
      Efull +=
          tau * c->getpi(0, 0) * cosh(eta) + tau * c->getpi(0, 3) * sinh(eta);
@@ -513,22 +511,17 @@ void Fluid::outputSurface(double tau) {
        deltas += pow(c->getpi(i, j), 2) * gmumu[i] * gmumu[j];
     if (t > 0.02) {
      s += 1.5 * deltas / ((e + p) * t);
-     S += tau * s * (cosh_int - tanh(vz) * sinh_int) /
-          sqrt(1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+     S += tau * s * (cosh_int - tanh(vz) * sinh_int) / sqrt(1. - vxvy_tanhvz);
     }
-    Px += tau * (e + p) * vx / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    Px += tau * (e + p) * vx / (1. - vxvy_tanhvz);
     vt_num += e / sqrt(1. - vx * vx - vy * vy) * sqrt(vx * vx + vy * vy);
     vt_den += e / sqrt(1. - vx * vx - vy * vy);
     vxvy_num += e * (fabs(vx) - fabs(vy));
     vxvy_den += e;
-    txxyy_num += (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                 (vx * vx - vy * vy);
-    txxyy_den += (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                     (vx * vx + vy * vy) +
-                 2. * p;
-    pi0x_num += e / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                fabs(c->getpi(0, 1));
-    pi0x_den += e / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    txxyy_num += (e + p) / (1. - vxvy_tanhvz) * (vx * vx - vy * vy);
+    txxyy_den += (e + p) / (1. - vxvy_tanhvz) * (vx * vx + vy * vy) + 2. * p;
+    pi0x_num += e / (1. - vxvy_tanhvz) * fabs(c->getpi(0, 1));
+    pi0x_den += e / (1. - vxvy_tanhvz);
     //----- Cornelius stuff
     double QCube[2][2][2][2][7];
     double piSquare[2][2][2][10], PiSquare[2][2][2];
@@ -665,11 +658,13 @@ void Fluid::outputSurface(double tau) {
     // if(cornelius->get_Nelements()>1) cout << "oops, Nelements>1\n" ;
     //----- end Cornelius
    }
- E = E * dx * dy * dz;
- Efull = Efull * dx * dy * dz;
- S = S * dx * dy * dz;
- Nb1 *= dx * dy * dz;
- Nb2 *= dx * dy * dz;
+
+ const double dV = dx * dy * dz;
+ E = E * dV;
+ Efull = Efull * dV;
+ S = S * dV;
+ Nb1 *= dV;
+ Nb2 *= dV;
  fout_aniz << setw(12) << tau << setw(14) << vt_num / vt_den << setw(14)
            << vxvy_num / vxvy_den << setw(14) << pi0x_num / pi0x_den << endl;
  cout << setw(10) << tau << setw(13) << E << setw(13) << Efull << setw(13)
@@ -717,12 +712,10 @@ void Fluid::outputCorona(double tau) {
     eta = getZ(iz);
     const double cosh_int = (sinh(eta + 0.5 * dz) - sinh(eta - 0.5 * dz)) / dz;
     const double sinh_int = (cosh(eta + 0.5 * dz) - cosh(eta - 0.5 * dz)) / dz;
-    E += tau * (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-             (cosh_int - tanh(vz) * sinh_int) -
-         tau * p * cosh_int;
+    const double vxvy_tanhvz = vx*vx + vy*vy + tanh(vz)*tanh(vz);
+    E += tau * (e + p) / (1. - vxvy_tanhvz) * (cosh_int - tanh(vz) * sinh_int) - tau * p * cosh_int;
     Nb1 += Q[NB_];
-    Nb2 += tau * nb * (cosh_int - tanh(vz) * sinh_int) /
-           sqrt(1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    Nb2 += tau * nb * (cosh_int - tanh(vz) * sinh_int) / sqrt(1. - vxvy_tanhvz);
     //---- inf check
     if (isinf(E)) {
      cout << "EEinf" << setw(14) << e << setw(14) << p << setw(14) << vx
@@ -730,8 +723,7 @@ void Fluid::outputCorona(double tau) {
      exit(1);
     }
     //--------------
-    Efull += tau * (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                 (cosh(eta) - tanh(vz) * sinh(eta)) -
+    Efull += tau * (e + p) / (1. - vxvy_tanhvz) * (cosh(eta) - tanh(vz) * sinh(eta)) -
              tau * p * cosh(eta);
     if (trcoeff->isViscous())
      Efull +=
@@ -745,22 +737,17 @@ void Fluid::outputCorona(double tau) {
        deltas += pow(c->getpi(i, j), 2) * gmumu[i] * gmumu[j];
     if (t > 0.02) {
      s += 1.5 * deltas / ((e + p) * t);
-     S += tau * s * (cosh_int - tanh(vz) * sinh_int) /
-          sqrt(1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+     S += tau * s * (cosh_int - tanh(vz) * sinh_int) / sqrt(1. - vxvy_tanhvz);
     }
-    Px += tau * (e + p) * vx / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    Px += tau * (e + p) * vx / (1. - vxvy_tanhvz);
     vt_num += e / sqrt(1. - vx * vx - vy * vy) * sqrt(vx * vx + vy * vy);
     vt_den += e / sqrt(1. - vx * vx - vy * vy);
     vxvy_num += e * (fabs(vx) - fabs(vy));
     vxvy_den += e;
-    txxyy_num += (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                 (vx * vx - vy * vy);
-    txxyy_den += (e + p) / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                     (vx * vx + vy * vy) +
-                 2. * p;
-    pi0x_num += e / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz)) *
-                fabs(c->getpi(0, 1));
-    pi0x_den += e / (1. - vx * vx - vy * vy - tanh(vz) * tanh(vz));
+    txxyy_num += (e + p) / (1. - vxvy_tanhvz) * (vx * vx - vy * vy);
+    txxyy_den += (e + p) / (1. - vxvy_tanhvz) * (vx * vx + vy * vy) + 2. * p;
+    pi0x_num += e / (1. - vxvy_tanhvz) * fabs(c->getpi(0, 1));
+    pi0x_den += e / (1. - vxvy_tanhvz);
 
     //----- Cornelius stuff
     bool isCorona = true, isTail = true;
@@ -877,11 +864,13 @@ void Fluid::outputCorona(double tau) {
     }
     //----- end Cornelius
    }
- E = E * dx * dy * dz;
- Efull = Efull * dx * dy * dz;
- S = S * dx * dy * dz;
- Nb1 *= dx * dy * dz;
- Nb2 *= dx * dy * dz;
+ 
+ const double dV = dx*dy*dz;
+ E = E * dV;
+ Efull = Efull * dV;
+ S = S * dV;
+ Nb1 *= dV;
+ Nb2 *= dV;
  fout_aniz << setw(12) << tau << setw(14) << vt_num / vt_den << setw(14)
            << vxvy_num / vxvy_den << setw(14) << pi0x_num / pi0x_den << endl;
  cout << setw(10) << "tau" << setw(13) << "E" << setw(13) << "Efull" << setw(13)

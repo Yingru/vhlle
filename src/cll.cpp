@@ -188,15 +188,18 @@ void Cell::getPrimVarPrev(EoS *eos, double tau, double &_e, double &_p,
 
 void Cell::setPrimVar(EoS *eos, double tau, double _e, double _nb, double _nq,
                       double _ns, double _vx, double _vy, double _vz) {
- const double gamma2 = 1. / (1 - _vx * _vx - _vy * _vy - _vz * _vz);
+ const double v2 = _vx*_vx + _vy*_vy + _vz*_vz;
+ const double gamma2 = 1. / (1 - v2);
  const double p = eos->p(_e, _nb, _nq, _ns);
- Q[T_] = tau * (_e + p * (_vx * _vx + _vy * _vy + _vz * _vz)) * gamma2;
- Q[X_] = tau * (_e + p) * _vx * gamma2;
- Q[Y_] = tau * (_e + p) * _vy * gamma2;
- Q[Z_] = tau * (_e + p) * _vz * gamma2;
- Q[NB_] = tau * _nb * sqrt(gamma2);
- Q[NQ_] = tau * _nq * sqrt(gamma2);
- Q[NS_] = tau * _ns * sqrt(gamma2);
+ const double tau_gamma = tau * sqrt(gamma2);
+ const double tau_ep_gamma2 = tau * (_e + p) * gamma2;
+ Q[T_] = tau * (_e + p * v2);
+ Q[X_] = tau_ep_gamma2 * _vx;
+ Q[Y_] = tau_ep_gamma2 * _vy;
+ Q[Z_] = tau_ep_gamma2 * _vz;
+ Q[NB_] = tau_gamma * _nb;
+ Q[NQ_] = tau_gamma * _nq;
+ Q[NS_] = tau_gamma * _ns;
  if (Q[NB_] != Q[NB_]) {
   cout << "init error!\n";
   eos->p(_e, _nb, _nq, _ns);
