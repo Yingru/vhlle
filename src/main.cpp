@@ -38,6 +38,7 @@
 #include "trancoeff.h"
 
 #include "icTrento.h"
+#include "eos_hotqcd.h"
 
 using namespace std;
 
@@ -50,6 +51,7 @@ double ic_dxy, ic_deta;
 
 char outputDir[255];
 char icInputFile[255];
+char eosFile[255];
 double etaS, zetaS, eCrit;
 int icModel,
     glauberVariable =
@@ -74,6 +76,8 @@ void readParameters(char *parFile) {
    eosType = atoi(parValue);
   else if (strcmp(parName, "icInputFile") == 0)
    strcpy(icInputFile, parValue);
+  else if (strcmp(parName, "eosFile") == 0)
+   strcpy(eosFile, parValue);
   else if (strcmp(parName, "nx") == 0)
    nx = atoi(parValue);
   else if (strcmp(parName, "ny") == 0)
@@ -135,15 +139,16 @@ void readParameters(char *parFile) {
 }
 
 void printParameters() {
- cout << "====== parameters ======\n";
+ cout << "\n====== parameters ======\n";
  cout << "outputDir = " << outputDir << endl;
+ cout << "icFile = " << icInputFile << endl;
+ cout << "eosFile = " << eosFile << endl;
  cout << "icModel = " << icModel << endl;
- cout << "[ic_nxy, ic_neta] = " << ic_nxy << ", " << ic_neta << endl;
- cout << "[ic_dxy, ic_deta] = " << ic_dxy << ", " << ic_deta << endl;
+ cout << "[ic_nxy, ic_neta, ic_dxy, ic_deta] = [" << ic_nxy << ", " << ic_neta << ", " << ic_dxy << ", " << ic_deta << "]" << endl;
  cout << "glauberVar = " << glauberVariable << "   ! 0=epsilon,1=entropy" << endl;
- cout << "[nx, ny, nz] = " << nx<< ", " << ny << ", " << nz << endl;
- cout << "(xmin, xmax)*(ymin, ymax)*(etamin, etamax) = (" << xmin << ", " << xmax <<")*(" << ymin << ", " << ymax << ")*(" << etamin << ", " << etamax << ")" << endl;
- cout << "(tau0, tauMax, dtau) = " << tau0 << ", " << tauMax << ", " << dtau << endl;
+ cout << "[nx, ny, nz] = [" << nx<< ", " << ny << ", " << nz  <<"]" << endl;
+ cout << "[(xmin, xmax)*(ymin, ymax)*(etamin, etamax)] = [(" << xmin << ", " << xmax <<")*(" << ymin << ", " << ymax << ")*(" << etamin << ", " << etamax << ")]" << endl;
+ cout << "[tau0, tauMax, dtau] = [" << tau0 << ", " << tauMax << ", " << dtau << "]" << endl;
  cout << "eosType = " << eosType << endl;
  cout << "e_crit = " << eCrit << endl;
  cout << "eta/s = " << etaS << endl;
@@ -152,7 +157,7 @@ void printParameters() {
  cout << "Rgt = " << Rgt << "  Rgz = " << Rgz << endl;
  cout << "impactPar = " << impactPar << endl;
  cout << "s0ScaleFactor = " << s0ScaleFactor << endl;
- cout << "======= end parameters =======\n";
+ cout << "======= end parameters =======\n\n";
 }
 
 // program parameters, to be read from file
@@ -192,8 +197,10 @@ int main(int argc, char **argv) {
   eos = new EoSChiral();
  else if (eosType == 2)
   eos = new EoSAZH();
+ else if (eosType == 3)
+  eos = new EoS_hotqcd(eosFile);
  else {
-  cout << "eosType != 0,1,2\n";
+  cout << "eosType != 0,1,2,3\n";
   return 0;
  }
  EoS *eosH = new EoSHadron("eos/eosHadronLog.dat");

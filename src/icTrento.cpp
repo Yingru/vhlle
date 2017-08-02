@@ -146,8 +146,7 @@ void ICTrento::readFile(char *fileName, EoS *eos)
             nb = 0.;
 
             if(sd < 1.0e-8) {ed = 0.;}
-            //else eos->gete(sd, ed, nb);
-            ed = sd;
+            else eos->gete(sd, ed, nb);
 
             t00 = ed;
             t01 = 0.0;

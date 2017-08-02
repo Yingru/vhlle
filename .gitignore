@@ -1,0 +1,5 @@
+HQ_evolution/
+debug*
+obj/
+obj_bp/
+hlle_visc

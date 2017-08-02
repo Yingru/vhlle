@@ -35,6 +35,7 @@ public:
  inline double cs(void) { return sqrt(1. / 3.); }
  // speed of sound squared as a function of energy density
  virtual inline double cs2(double e) { return 1. / 3.; };
+ virtual inline void gete(double s, double& e, double nb);
 };
 
 // EoS class implementing two variants:
