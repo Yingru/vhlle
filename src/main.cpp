@@ -37,11 +37,17 @@
 #include "eoHadron.h"
 #include "trancoeff.h"
 
+#include "icTrento.h"
+
 using namespace std;
 
 // program parameters, to be read from file
 int nx, ny, nz, eosType;
 double xmin, xmax, ymin, ymax, etamin, etamax, tau0, tauMax, dtau;
+
+int ic_nxy, ic_neta;
+double ic_dxy, ic_deta;
+
 char outputDir[255];
 char icInputFile[255];
 double etaS, zetaS, eCrit;
@@ -112,6 +118,15 @@ void readParameters(char *parFile) {
    impactPar = atof(parValue);
   else if (strcmp(parName, "s0ScaleFactor") == 0)
    s0ScaleFactor = atof(parValue);
+  else if (strcmp(parName, "ic_nxy") == 0)
+   ic_nxy = atoi(parValue);
+  else if (strcmp(parName, "ic_neta") == 0)
+   ic_neta = atoi(parValue);
+  else if (strcmp(parName, "ic_dxy") == 0)
+   ic_dxy = atof(parValue);
+  else if (strcmp(parName, "ic_deta") == 0)
+   ic_deta = atof(parValue);
+
   else if (parName[0] == '!')
    cout << "CCC " << sline.str() << endl;
   else
@@ -122,22 +137,14 @@ void readParameters(char *parFile) {
 void printParameters() {
  cout << "====== parameters ======\n";
  cout << "outputDir = " << outputDir << endl;
- cout << "eosType = " << eosType << endl;
- cout << "nx = " << nx << endl;
- cout << "ny = " << ny << endl;
- cout << "nz = " << nz << endl;
  cout << "icModel = " << icModel << endl;
- cout << "glauberVar = " << glauberVariable << "   ! 0=epsilon,1=entropy"
-      << endl;
- cout << "xmin = " << xmin << endl;
- cout << "xmax = " << xmax << endl;
- cout << "ymin = " << ymin << endl;
- cout << "ymax = " << ymax << endl;
- cout << "etamin = " << etamin << endl;
- cout << "etamax = " << etamax << endl;
- cout << "tau0 = " << tau0 << endl;
- cout << "tauMax = " << tauMax << endl;
- cout << "dtau = " << dtau << endl;
+ cout << "[ic_nxy, ic_neta] = " << ic_nxy << ", " << ic_neta << endl;
+ cout << "[ic_dxy, ic_deta] = " << ic_dxy << ", " << ic_deta << endl;
+ cout << "glauberVar = " << glauberVariable << "   ! 0=epsilon,1=entropy" << endl;
+ cout << "[nx, ny, nz] = " << nx<< ", " << ny << ", " << nz << endl;
+ cout << "(xmin, xmax)*(ymin, ymax)*(etamin, etamax) = (" << xmin << ", " << xmax <<")*(" << ymin << ", " << ymax << ")*(" << etamin << ", " << etamax << ")" << endl;
+ cout << "(tau0, tauMax, dtau) = " << tau0 << ", " << tauMax << ", " << dtau << endl;
+ cout << "eosType = " << eosType << endl;
  cout << "e_crit = " << eCrit << endl;
  cout << "eta/s = " << etaS << endl;
  cout << "zeta/s = " << zetaS << endl;
@@ -214,6 +221,10 @@ int main(int argc, char **argv) {
  } else if (icModel == 4) {  // analytical Gubser solution
   ICGubser *ic = new ICGubser();
   ic->setIC(f, eos, tau0);
+  delete ic;
+ } else if (icModel == 5) {
+  ICTrento *ic = new ICTrento(icInputFile, eos, ic_nxy, ic_neta, ic_dxy, ic_deta);
+  ic->setIC(f, tau0);
   delete ic;
  } else {
   cout << "icModel = " << icModel << " not implemented\n";
