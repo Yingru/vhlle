@@ -16,7 +16,7 @@ ymax      16.0
 etamin   -10.0
 etamax    10.0
 
-! icModel: 1=Glauber, 2=Glauber_table+parametrized rapidity for energy conserv. check, 4=Gubser flow; 5=3D initial model Trento
+! icModel: 1=Glauber, 2=Glauber_table+parametrized rapidity for energy conserv. check, 4=Gubser flow; 5=3D initial model Trento (currently only 5 is implemented!)
 icModel    5
 glauberVar 1       ! reserved for future use
 icInputFile 0.dat
