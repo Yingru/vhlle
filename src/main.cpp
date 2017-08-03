@@ -30,10 +30,7 @@
 #include "icGlauber.h"
 #include "icGubser.h"
 #include "eos.h"
-#include "eo3.h"
-#include "eo1.h"
 #include "eoChiral.h"
-#include "eoAZH.h"
 #include "eoHadron.h"
 #include "trancoeff.h"
 
@@ -191,16 +188,12 @@ int main(int argc, char **argv) {
  printParameters();
 
  // EoS
- if (eosType == 0)
-  eos = new EoSs("eos/Laine_nf3.dat", 3);
- else if (eosType == 1)
+ if (eosType == 1)
   eos = new EoSChiral();
- else if (eosType == 2)
-  eos = new EoSAZH();
  else if (eosType == 3)
   eos = new EoS_hotqcd(eosFile);
  else {
-  cout << "eosType != 0,1,2,3\n";
+  cout << "eosType != 1,3\n";
   return 0;
  }
  EoS *eosH = new EoSHadron("eos/eosHadronLog.dat");

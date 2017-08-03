@@ -1,6 +1,6 @@
 outputDir       freezeout/3D.etas01.zetas01.crossTerms
 
-eosType       3           ! EoS choice: 0 for Laine, 1 for Chiral model, 2 for Bag model, 3 for hotQCD
+eosType       3           ! EoS choice: 1 for Chiral model, 3 for hotQCD
 
 etaS      0.1             !  eta/s value
 zetaS     0.1             !  zeta/s, bulk viscosity

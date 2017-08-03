@@ -38,33 +38,3 @@ public:
  virtual void gete(double s, double& e, double nb) {e=0.;};
 };
 
-// EoS class implementing two variants:
-// 1) "SIMPLE": EoS for ultrarelativistic maseless gas
-// 2) "TABLE" : EoS p=p(e) from a table
-// each variant is enabled by compiling with -D SIMPLE / -D TABLE
-class EoSs : public EoS {
-private:
- TGraph *gp, *gT, *gmu;
-
-public:
- EoSs(std::string fname, int ncols);
- ~EoSs();
-
- virtual inline void eos(double e, double nb, double nq, double ns, double &T,
-                         double &mub, double &muq, double &mus, double &_p) {
-  _p = p(e);
-  T = t(e);
-  mub = muq = mus = 0.;
- }
- virtual inline double p(double e, double nb, double ns, double nq) {
-  return p(e);
- }
-
- double p(double e);
- double dpe(double e);
- double t(double e);
- double mu(double e);
-
- virtual double cs2(double e) { return dpe(e); }
- // virtual double cs(double e) { return sqrt(dpe(e)) ; }
-};
