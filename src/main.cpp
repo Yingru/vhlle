@@ -24,11 +24,6 @@
 #include <sstream>
 #include "fld.h"
 #include "hdo.h"
-#include "ic.h"
-#include "ickw.h"
-#include "icPartUrqmd.h"
-#include "icGlauber.h"
-#include "icGubser.h"
 #include "eos.h"
 #include "eoChiral.h"
 #include "eoHadron.h"
@@ -206,23 +201,7 @@ int main(int argc, char **argv) {
  cout << "fluid allocation done\n";
 
  // initilal conditions
- if (icModel == 1) {  // optical Glauber
-  ICGlauber *ic = new ICGlauber(epsilon0, impactPar, tau0);
-  ic->setIC(f, eos);
-  delete ic;
- } else if (icModel == 2) {  // Glauber_table + parametrized rapidity dependence
-  IC *ic = new IC(icInputFile, s0ScaleFactor);
-  ic->setIC(f, eos, tau0);
-  delete ic;
- } else if (icModel == 3) {  // UrQMD IC
-  IcPartUrqmd *ic = new IcPartUrqmd(f, icInputFile, Rgt, Rgz, tau0);
-  ic->setIC(f, eos);
-  delete ic;
- } else if (icModel == 4) {  // analytical Gubser solution
-  ICGubser *ic = new ICGubser();
-  ic->setIC(f, eos, tau0);
-  delete ic;
- } else if (icModel == 5) {
+ if (icModel == 5) {
   ICTrento *ic = new ICTrento(icInputFile, eos, ic_nxy, ic_neta, ic_dxy, ic_deta);
   ic->setIC(f, tau0);
   delete ic;
