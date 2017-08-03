@@ -32,9 +32,10 @@
 #define OUTPI
 
 // change to hadron EoS (e.g. Laine) to calculate v,T,mu at the surface
-#define SWAP_EOS
+//#define SWAP_EOS  //Yingru--turn off this option for now
 
 using namespace std;
+size_t width = 15;
 
 // returns the velocities in cartesian coordinates, fireball rest frame.
 // Y=longitudinal rapidity of fluid
@@ -116,6 +117,16 @@ void Fluid::initOutput(char *dir, int maxstep, double tau0, int cmpr2dOut) {
  sprintf(command, "mkdir -p %s", dir);
  int return_mkdir = system(command);
  cout << "mkdir returns: " << return_mkdir << endl;
+
+ string outfreeze = dir;
+ outfreeze.append("/freezeout.dat");
+ ffreeze.open(outfreeze.c_str());
+
+ // freezeout header file
+ ffreeze << "# t x y z st sx sy sz vx vy vz pi11 pi12 pi13 pi22 pi23 pi33" << std::endl;
+ 
+ // Yingru: get rid of those output files
+ /*
  string outx = dir;
  outx.append("/outx.dat");
  string outxvisc = dir;
@@ -163,6 +174,7 @@ void Fluid::initOutput(char *dir, int maxstep, double tau0, int cmpr2dOut) {
         << endl;
  outputGnuplot(tau0);
  fout_aniz << "#  tau  <<v_T>>  e_p  e'_p  (to compare with SongHeinz)\n";
+ */
 }
 
 void Fluid::correctImagCells(void) {
@@ -446,6 +458,8 @@ void transformToLab(double eta, double &vx, double &vy, double &vz) {
  vz = tanh(Y);
 }
 
+
+// Yingru: reduce the hypersurface output
 void Fluid::outputSurface(double tau) {
  static double nbSurf = 0.0;
  double e, p, nb, nq, ns, t, mub, muq, mus, vx, vy, vz, Q[7];
@@ -454,9 +468,9 @@ void Fluid::outputSurface(double tau) {
         txxyy_num = 0., txxyy_den = 0., Nb1 = 0., Nb2 = 0.;
  double eta = 0;
  int nelements = 0, nsusp = 0;  // all surface emenents and suspicious ones
- int nCoreCells = 0,
-     nCoreCutCells = 0;  // cells with e>eCrit and cells with cut visc.corr.
-                         //-- Cornelius: allocating memory for corner points
+ int nCoreCells = 0, nCoreCutCells = 0;  // cells with e>eCrit and cells with cut visc.corr.
+
+ //>>>> Cornelius: allocating memory for corner points
  double ****ccube = new double ***[2];
  for (int i1 = 0; i1 < 2; i1++) {
   ccube[i1] = new double **[2];
@@ -467,7 +481,8 @@ void Fluid::outputSurface(double tau) {
    }
   }
  }
-//----end Cornelius
+//<<<< end Cornelius
+
 #ifdef SWAP_EOS
  swap(eos, eosH);
 #endif
@@ -522,7 +537,7 @@ void Fluid::outputSurface(double tau) {
     txxyy_den += (e + p) / (1. - vxvy_tanhvz) * (vx * vx + vy * vy) + 2. * p;
     pi0x_num += e / (1. - vxvy_tanhvz) * fabs(c->getpi(0, 1));
     pi0x_den += e / (1. - vxvy_tanhvz);
-    //----- Cornelius stuff
+    //>>>>>- Cornelius stuff
     double QCube[2][2][2][2][7];
     double piSquare[2][2][2][10], PiSquare[2][2][2];
     for (int jx = 0; jx < 2; jx++)
@@ -546,11 +561,19 @@ void Fluid::outputSurface(double tau) {
     const int Nsegm = cornelius->get_Nelements();
     for (int isegm = 0; isegm < Nsegm; isegm++) {
      nelements++;
-     ffreeze.precision(15);
-     ffreeze << setw(24) << tau + cornelius->get_centroid_elem(isegm, 0)
-             << setw(24) << getX(ix) + cornelius->get_centroid_elem(isegm, 1)
-             << setw(24) << getY(iy) + cornelius->get_centroid_elem(isegm, 2)
-             << setw(24) << getZ(iz) + cornelius->get_centroid_elem(isegm, 3);
+     ffreeze.precision(6);
+    
+     // Yingru:from curvelinear cx^mu to cartesian x^mu, output>> x0 >> x1 >> x2 >> x3;
+     double cx0 = tau + cornelius->get_centroid_elem(isegm, 0),
+            x1 = getX(ix) + cornelius->get_centroid_elem(isegm, 1),
+            x2 = getY(iy) + cornelius->get_centroid_elem(isegm, 2),
+            cx3 = getZ(iz) + cornelius->get_centroid_elem(isegm, 3);
+     double x0 = cx0*cosh(cx3), x3 = cx0*sinh(cx3);
+     ffreeze << setw(width) << x0
+             << setw(width) << x1
+             << setw(width) << x2
+             << setw(width) << x3;
+
      // ---- interpolation procedure
      double vxC = 0., vyC = 0., vzC = 0., TC = 0., mubC = 0., muqC = 0.,
             musC = 0., piC[10], PiC = 0., nbC = 0.,
@@ -571,8 +594,7 @@ void Fluid::outputSurface(double tau) {
        for (int jy = 0; jy < 2; jy++)
         for (int jz = 0; jz < 2; jz++)
          for (int i = 0; i < 7; i++) {
-          QC[i] += QCube[jt][jx][jy][jz][i] * wCenT[jt] * wCenX[jx] *
-                   wCenY[jy] * wCenZ[jz];
+          QC[i] += QCube[jt][jx][jy][jz][i] * wCenT[jt] * wCenX[jx] * wCenY[jy] * wCenZ[jz];
          }
      for (int i = 0; i < 7; i++)
       QC[i] = QC[i] / (tau + cornelius->get_centroid_elem(isegm, 0));
@@ -583,14 +605,16 @@ void Fluid::outputSurface(double tau) {
       cout << "#### Error (surface): high T/mu_b ####\n";
      }
      if (eC > ecrit * 2.0 || eC < ecrit * 0.5) nsusp++;
+
+     double dV_tmp;
      for (int jx = 0; jx < 2; jx++)
-      for (int jy = 0; jy < 2; jy++)
-       for (int jz = 0; jz < 2; jz++) {
-        for (int ii = 0; ii < 10; ii++)
-         piC[ii] +=
-             piSquare[jx][jy][jz][ii] * wCenX[jx] * wCenY[jy] * wCenZ[jz];
-        PiC += PiSquare[jx][jy][jz] * wCenX[jx] * wCenY[jy] * wCenZ[jz];
-       }
+       for (int jy = 0; jy < 2; jy++)
+        for (int jz = 0; jz < 2; jz++) {
+           dV_tmp = wCenX[jx] * wCenY[jy] * wCenZ[jz];
+           for (int ii = 0; ii < 10; ii++)
+               piC[ii] += piSquare[jx][jy][jz][ii] * dV_tmp;
+           PiC += PiSquare[jx][jy][jz] * dV_tmp;
+         }
      double v2C = vxC * vxC + vyC * vyC + vzC * vzC;
      if (v2C > 1.) {
       vxC *= sqrt(0.99 / v2C);
@@ -618,45 +642,54 @@ void Fluid::outputSurface(double tau) {
      for (int ii = 0; ii < 4; ii++)
       dVEff += dsigma[ii] * uC[ii];  // normalize for Delta eta=1
      vEff += dVEff;
-     for (int ii = 0; ii < 4; ii++) ffreeze << setw(24) << dsigma[ii];
-     for (int ii = 0; ii < 4; ii++) ffreeze << setw(24) << uC[ii];
+
+     // Yingru: output dsigma_mu
+     for (int ii = 0; ii < 4; ii++) ffreeze << setw(width) << dsigma[ii];
+
+     // Yingru: output velocity: vx, vy, vz
+     ffreeze << setw(width) << vxC 
+             << setw(width) << vyC
+             << setw(width) << vzC;
+
+     /*
+     for (int ii = 0; ii < 4; ii++) ffreeze << setw(width) << uC[ii];
      ffreeze << setw(24) << TC << setw(24) << mubC << setw(24) << muqC
              << setw(24) << musC;
+     */
 #ifdef OUTPI
      double picart[10];
-     /*pi00*/ picart[index44(0, 0)] = ch * ch * piC[index44(0, 0)] +
-                                      2. * ch * sh * piC[index44(0, 3)] +
-                                      sh * sh * piC[index44(3, 3)];
-     /*pi01*/ picart[index44(0, 1)] =
-         ch * piC[index44(0, 1)] + sh * piC[index44(3, 1)];
-     /*pi02*/ picart[index44(0, 2)] =
-         ch * piC[index44(0, 2)] + sh * piC[index44(3, 2)];
-     /*pi03*/ picart[index44(0, 3)] =
-         ch * sh * (piC[index44(0, 0)] + piC[index44(3, 3)]) +
-         (ch * ch + sh * sh) * piC[index44(0, 3)];
-     /*pi11*/ picart[index44(1, 1)] = piC[index44(1, 1)];
-     /*pi12*/ picart[index44(1, 2)] = piC[index44(1, 2)];
-     /*pi13*/ picart[index44(1, 3)] =
-         sh * piC[index44(0, 1)] + ch * piC[index44(3, 1)];
-     /*pi22*/ picart[index44(2, 2)] = piC[index44(2, 2)];
-     /*pi23*/ picart[index44(2, 3)] =
-         sh * piC[index44(0, 2)] + ch * piC[index44(3, 2)];
-     /*pi33*/ picart[index44(3, 3)] = sh * sh * piC[index44(0, 0)] +
-                                      ch * ch * piC[index44(3, 3)] +
-                                      2. * sh * ch * piC[index44(0, 3)];
-     for (int ii = 0; ii < 10; ii++) ffreeze << setw(24) << picart[ii];
-     ffreeze << setw(24) << PiC << endl;
+     /*pi00*/ picart[index44(0,0)] = ch*ch*piC[index44(0,0)] + 2.*ch*sh*piC[index44(0,3)] + sh*sh*piC[index44(3, 3)];
+     /*pi01*/ picart[index44(0,1)] = ch*piC[index44(0,1)] + sh*piC[index44(3,1)];
+     /*pi02*/ picart[index44(0,2)] = ch*piC[index44(0,2)] + sh*piC[index44(3,2)];
+     /*pi03*/ picart[index44(0,3)] = ch*sh*(piC[index44(0,0)] + piC[index44(3,3)]) + (ch*ch+sh*sh)*piC[index44(0,3)];
+     /*pi11*/ picart[index44(1,1)] = piC[index44(1,1)];
+     /*pi12*/ picart[index44(1,2)] = piC[index44(1,2)];
+     /*pi13*/ picart[index44(1,3)] = sh*piC[index44(0,1)] + ch*piC[index44(3,1)];
+     /*pi22*/ picart[index44(2,2)] = piC[index44(2,2)];
+     /*pi23*/ picart[index44(2,3)] = sh*piC[index44(0,2)] + ch*piC[index44(3,2)];
+     /*pi33*/ picart[index44(3,3)] = sh*sh*piC[index44(0,0)] + ch*ch*piC[index44(3,3)] + 2.*sh*ch*piC[index44(0,3)];
+     //for (int ii = 0; ii < 10; ii++) ffreeze << setw(24) << picart[ii];
+     // Yingru: output pi tensor components(11, 12, 13, 22, 23), others can be calculated by symmatry,traceless,orthogina;
+     ffreeze << setw(width) << picart[index44(1,1)]
+             << setw(width) << picart[index44(1,2)]
+             << setw(width) << picart[index44(1,3)]
+             << setw(width) << picart[index44(2,2)]
+             << setw(width) << picart[index44(2,3)];
+
+     // for now, let us ignore bulk output
+     ffreeze << endl;
+     //ffreeze << setw(24) << PiC << endl;
 #else
      ffreeze << setw(24) << dVEff << endl;
 #endif
      double dEsurfVisc = 0.;
      for (int i = 0; i < 4; i++)
-      dEsurfVisc += picart[index44(0, i)] * dsigma[i];
+        dEsurfVisc += picart[index44(0, i)] * dsigma[i];
      EtotSurf += (eC + pC) * uC[0] * dVEff - pC * dsigma[0] + dEsurfVisc;
      nbSurf += nbC * dVEff;
     }
     // if(cornelius->get_Nelements()>1) cout << "oops, Nelements>1\n" ;
-    //----- end Cornelius
+    //<<<<<- end Cornelius
    }
 
  const double dV = dx * dy * dz;
@@ -687,6 +720,8 @@ void Fluid::outputSurface(double tau) {
 #endif
  if (nelements == 0) exit(0);
 }
+
+
 
 void Fluid::outputCorona(double tau) {
  static double nbSurf = 0.0;
@@ -770,9 +805,14 @@ void Fluid::outputCorona(double tau) {
       }
     if (isCorona && !isTail) {
      nelements++;
-     ffreeze.precision(15);
-     ffreeze << setw(24) << tau << setw(24) << getX(ix) + 0.5 * dx << setw(24)
-             << getY(iy) + 0.5 * dy << setw(24) << getZ(iz) + 0.5 * dz;
+     ffreeze.precision(6);
+     double cx0 = tau, x1 = getX(ix)+0.5*dx, x2 = getY(iy)+0.5*dy, cx3=getX(iz)+0.5*dz;
+     ffreeze << setw(width) << cx0*cosh(cx3) 
+             << setw(width) << x1 
+             << setw(width) << x2
+             << setw(width) << cx0*sinh(cx3);
+
+     //ffreeze << setw(24) << tau << setw(24) << getX(ix) + 0.5 * dx << setw(24)<< getY(iy) + 0.5 * dy << setw(24) << getZ(iz) + 0.5 * dz;
      // ---- interpolation procedure
      double vxC = 0., vyC = 0., vzC = 0., TC = 0., mubC = 0., muqC = 0.,
             musC = 0., piC[10], PiC = 0., nbC = 0.,
@@ -825,34 +865,37 @@ void Fluid::outputCorona(double tau) {
      for (int ii = 0; ii < 4; ii++)
       dVEff += dsigma[ii] * uC[ii];  // normalize for Delta eta=1
      vEff += dVEff;
-     for (int ii = 0; ii < 4; ii++) ffreeze << setw(24) << dsigma[ii];
+     for (int ii = 0; ii < 4; ii++) ffreeze << setw(width) << dsigma[ii];
+
+     ffreeze << setw(width) << vxC 
+             << setw(width) << vyC
+             << setw(width) << vzC;
+     /*
      for (int ii = 0; ii < 4; ii++) ffreeze << setw(24) << uC[ii];
      ffreeze << setw(24) << TC << setw(24) << mubC << setw(24) << muqC
              << setw(24) << musC;
+     */
 #ifdef OUTPI
      double picart[10];
-     /*pi00*/ picart[index44(0, 0)] = ch * ch * piC[index44(0, 0)] +
-                                      2. * ch * sh * piC[index44(0, 3)] +
-                                      sh * sh * piC[index44(3, 3)];
-     /*pi01*/ picart[index44(0, 1)] =
-         ch * piC[index44(0, 1)] + sh * piC[index44(3, 1)];
-     /*pi02*/ picart[index44(0, 2)] =
-         ch * piC[index44(0, 2)] + sh * piC[index44(3, 2)];
-     /*pi03*/ picart[index44(0, 3)] =
-         ch * sh * (piC[index44(0, 0)] + piC[index44(3, 3)]) +
-         (ch * ch + sh * sh) * piC[index44(0, 3)];
-     /*pi11*/ picart[index44(1, 1)] = piC[index44(1, 1)];
-     /*pi12*/ picart[index44(1, 2)] = piC[index44(1, 2)];
-     /*pi13*/ picart[index44(1, 3)] =
-         sh * piC[index44(0, 1)] + ch * piC[index44(3, 1)];
-     /*pi22*/ picart[index44(2, 2)] = piC[index44(2, 2)];
-     /*pi23*/ picart[index44(2, 3)] =
-         sh * piC[index44(0, 2)] + ch * piC[index44(3, 2)];
-     /*pi33*/ picart[index44(3, 3)] = sh * sh * piC[index44(0, 0)] +
-                                      ch * ch * piC[index44(3, 3)] +
-                                      2. * sh * ch * piC[index44(0, 3)];
-     for (int ii = 0; ii < 10; ii++) ffreeze << setw(24) << picart[ii];
-     ffreeze << setw(24) << PiC << endl;
+     /*pi00*/ picart[index44(0,0)] = ch*ch*piC[index44(0,0)] + 2.*ch*sh* piC[index44(0,3)] + sh*sh*piC[index44(3,3)];
+     /*pi01*/ picart[index44(0,1)] = ch*piC[index44(0,1)] + sh*piC[index44(3,1)];
+     /*pi02*/ picart[index44(0,2)] = ch*piC[index44(0,2)] + sh*piC[index44(3,2)];
+     /*pi03*/ picart[index44(0,3)] = ch*sh*(piC[index44(0,0)] + piC[index44(3,3)]) + (ch*ch+sh*sh)*piC[index44(0,3)];
+     /*pi11*/ picart[index44(1,1)] = piC[index44(1,1)];
+     /*pi12*/ picart[index44(1,2)] = piC[index44(1,2)];
+     /*pi13*/ picart[index44(1,3)] = sh*piC[index44(0,1)] + ch*piC[index44(3,1)];
+     /*pi22*/ picart[index44(2,2)] = piC[index44(2,2)];
+     /*pi23*/ picart[index44(2,3)] = sh*piC[index44(0,2)] + ch*piC[index44(3,2)];
+     /*pi33*/ picart[index44(3,3)] = sh*sh*piC[index44(0,0)] + ch*ch*piC[index44(3,3)] + 2.*sh*ch*piC[index44(0,3)];
+     //for (int ii = 0; ii < 10; ii++) ffreeze << setw(24) << picart[ii];
+     
+     ffreeze << setw(width) << picart[index44(1,1)] 
+             << setw(width) << picart[index44(1,2)]
+             << setw(width) << picart[index44(1,3)]
+             << setw(width) << picart[index44(2,2)]
+             << setw(width) << picart[index44(2,3)];
+     ffreeze << endl;
+     //ffreeze << setw(24) << PiC << endl;
 #else
      ffreeze << setw(24) << dVEff << endl;
 #endif

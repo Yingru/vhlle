@@ -145,10 +145,10 @@ void printParameters() {
  cout << "e_crit = " << eCrit << endl;
  cout << "eta/s = " << etaS << endl;
  cout << "zeta/s = " << zetaS << endl;
- cout << "epsilon0 = " << epsilon0 << endl;
- cout << "Rgt = " << Rgt << "  Rgz = " << Rgz << endl;
- cout << "impactPar = " << impactPar << endl;
- cout << "s0ScaleFactor = " << s0ScaleFactor << endl;
+ //cout << "epsilon0 = " << epsilon0 << endl;
+ //cout << "Rgt = " << Rgt << "  Rgz = " << Rgz << endl;
+ //cout << "impactPar = " << impactPar << endl;
+ //cout << "s0ScaleFactor = " << s0ScaleFactor << endl;
  cout << "======= end parameters =======\n\n";
 }
 
@@ -196,11 +196,12 @@ int main(int argc, char **argv) {
  // transport coefficients
  trcoeff = new TransportCoeff(etaS, zetaS, eos);
 
+ //fluid 
  f = new Fluid(eos, eosH, trcoeff, nx, ny, nz, xmin, xmax, ymin, ymax, etamin,
                etamax, dtau, eCrit);
  cout << "fluid allocation done\n";
 
- // initilal conditions
+ // initilal conditions-- Yingru: currently only implement the readin IC type
  if (icModel == 5) {
   ICTrento *ic = new ICTrento(icInputFile, eos, ic_nxy, ic_neta, ic_dxy, ic_deta);
   ic->setIC(f, tau0);
@@ -225,20 +226,19 @@ int main(int argc, char **argv) {
  f->initOutput(outputDir, maxstep, tau0, 2);
  f->outputCorona(tau0);
 
- for (int istep = 0; istep < maxstep; istep++) {
+  for (int istep = 0; istep < maxstep; istep++) {
   // decrease timestep automatically, but use fixed dtau for output
-  int nSubSteps = 1;
-  while (dtau / nSubSteps >
-         1.0 * (tau0 + dtau * istep) * (etamax - etamin) / (nz - 1))
-   nSubSteps *= 2;  // 0.02 in "old" coordinates
-  h->setDtau(dtau / nSubSteps);
-  // cout<<"dtau = "<<dtau / nSubSteps<<endl;
-  for (int j = 0; j < nSubSteps; j++) {
-   h->performStep();
+      int nSubSteps = 1;
+      while (dtau / nSubSteps > 1.0 * (tau0 + dtau * istep) * (etamax - etamin) / (nz - 1))
+          nSubSteps *= 2;  // 0.02 in "old" coordinates
+      h->setDtau(dtau / nSubSteps);
+      // cout<<"dtau = "<<dtau / nSubSteps<<endl;
+      for (int j = 0; j < nSubSteps; j++) 
+           h->performStep();
+
+      // f->outputGnuplot(h->getTau()); ignore Gnuplot ignore Gnuplot
+      f->outputSurface(h->getTau());
   }
-  f->outputGnuplot(h->getTau());
-  f->outputSurface(h->getTau());
- }
 
  end = 0;
  time(&end);
