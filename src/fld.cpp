@@ -806,11 +806,12 @@ void Fluid::outputCorona(double tau) {
     if (isCorona && !isTail) {
      nelements++;
      ffreeze.precision(6);
-     double cx0 = tau, x1 = getX(ix)+0.5*dx, x2 = getY(iy)+0.5*dy, cx3=getX(iz)+0.5*dz;
-     ffreeze << setw(width) << cx0*cosh(cx3) 
+     double cx0 = tau, x1 = getX(ix)+0.5*dx, x2 = getY(iy)+0.5*dy, cx3=getZ(iz)+0.5*dz;
+     double x0 = cx0*cosh(cx3), x3 = cx0 * sinh(cx3);
+     ffreeze << setw(width) << x0
              << setw(width) << x1 
              << setw(width) << x2
-             << setw(width) << cx0*sinh(cx3);
+             << setw(width) << x3;
 
      //ffreeze << setw(24) << tau << setw(24) << getX(ix) + 0.5 * dx << setw(24)<< getY(iy) + 0.5 * dy << setw(24) << getZ(iz) + 0.5 * dz;
      // ---- interpolation procedure
