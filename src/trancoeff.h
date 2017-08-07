@@ -4,12 +4,13 @@ class EoS;
 // of the fluid: eta/s, zeta/s and the corresponding relaxation times,
 // taupi (\tau_\pi) and tauPi (\tau_\Pi)
 class TransportCoeff {
- double etaS, zetaS0, taupi, tauPi;
+ double etaS_min, etaS_slope, zetaS0, taupi, tauPi;
  EoS *eos;  // EoS instance is needed optionally for zeta/s parametrization,
             // which depends on the speed of sound
  double zetaS(double e, double T);
+ double etaS(double T);
 public:
- TransportCoeff(double _etaS, double _zetaS, EoS *_eos);
+ TransportCoeff(double _etaS, double _etaS_slope, double _zetaS,EoS *_eos);
  ~TransportCoeff(){};
  void printZetaT();
  // returns (optionally temperature dependent) eta/s and zeta/s
@@ -28,7 +29,7 @@ public:
  }
  // isViscous tells whether the fluid is viscous or inviscid
  inline bool isViscous() {
-  if (etaS > 0. || zetaS0 > 0.)
+  if (etaS_min > 0. || zetaS0 > 0.)
    return true;
   else
    return false;

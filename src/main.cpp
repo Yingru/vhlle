@@ -44,7 +44,8 @@ double ic_dxy, ic_deta;
 char outputDir[255];
 char icInputFile[255];
 char eosFile[255];
-double etaS, zetaS, eCrit;
+double etaS, etaS_slope, zetaS, eCrit;
+
 int icModel,
     glauberVariable =
         1;  // icModel=1 for pure Glauber, 2 for table input (Glissando etc)
@@ -102,6 +103,8 @@ void readParameters(char *parFile) {
    eCrit = atof(parValue);
   else if (strcmp(parName, "etaS") == 0)
    etaS = atof(parValue);
+  else if (strcmp(parName, "etaS_slope") == 0)
+   etaS_slope = atof(parValue);
   else if (strcmp(parName, "zetaS") == 0)
    zetaS = atof(parValue);
   else if (strcmp(parName, "epsilon0") == 0)
@@ -143,7 +146,7 @@ void printParameters() {
  cout << "[tau0, tauMax, dtau] = [" << tau0 << ", " << tauMax << ", " << dtau << "]" << endl;
  cout << "eosType = " << eosType << endl;
  cout << "e_crit = " << eCrit << endl;
- cout << "eta/s = " << etaS << endl;
+ cout << "eta/s = " << etaS  <<", eta/s_slope = " << etaS_slope <<  endl;
  cout << "zeta/s = " << zetaS << endl;
  //cout << "epsilon0 = " << epsilon0 << endl;
  //cout << "Rgt = " << Rgt << "  Rgz = " << Rgz << endl;
@@ -194,7 +197,7 @@ int main(int argc, char **argv) {
  EoS *eosH = new EoSHadron("eos/eosHadronLog.dat");
 
  // transport coefficients
- trcoeff = new TransportCoeff(etaS, zetaS, eos);
+ trcoeff = new TransportCoeff(etaS, etaS_slope, zetaS, eos);
 
  //fluid 
  f = new Fluid(eos, eosH, trcoeff, nx, ny, nz, xmin, xmax, ymin, ymax, etamin,
