@@ -2,7 +2,7 @@
 #include <cmath>
 #include <string>
 
-class TGraph;
+//class TGraph;
 
 // NOTATIONS:
 //  e = energy density (local rest frame), [GeV/fm^3]
