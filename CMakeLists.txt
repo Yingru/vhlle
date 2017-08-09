@@ -36,6 +36,9 @@ if(NOT CMAKE_CXX_FLAGS MATCHES "-march|-mtune")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 endif()
 
-install(FILES ${PROJECT_NAME}.conf DESTINATION ${PROJECT_NAME})
-install(DIRECTORY eos/ DESTINATION ${PROJECT_NAME})
+#install(FILES ${PROJECT_NAME}.conf DESTINATION ${PROJECT_NAME})
+#install(DIRECTORY eos/ DESTINATION ${PROJECT_NAME}/eos/)
+install(FILES ${PROJECT_NAME}.conf DESTINATION bin)
+install(DIRECTORY eos/ DESTINATION bin/eos/)
+
 add_subdirectory(src)
