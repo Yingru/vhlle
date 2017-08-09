@@ -3,3 +3,5 @@ debug*
 obj/
 obj_bp/
 hlle_visc
+TEST/
+build/
