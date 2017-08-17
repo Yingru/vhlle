@@ -29,6 +29,9 @@
 #include "trancoeff.h"
 #include "cornelius.h"
 
+
+//#include <boost/program_options/variables_map.hpp>
+
 #define OUTPI
 
 // change to hadron EoS (e.g. Laine) to calculate v,T,mu at the surface
@@ -47,9 +50,9 @@ void Fluid::getCMFvariables(Cell *c, double tau, double &e, double &nb,
  double eta = getZ(c->getZ());
  //	Y = eta + TMath::ATanH(vz) ;
  Y = eta + 1. / 2. * log((1. + vz) / (1. - vz));
- double boost = cosh(Y - eta) / cosh(Y);
- vx = vx * boost;
- vy = vy * boost;
+ double bstFax = cosh(Y - eta) / cosh(Y);
+ vx = vx * bstFax;
+ vy = vy * bstFax;
 }
 
 Fluid::Fluid(EoS *_eos, EoS *_eosH, TransportCoeff *_trcoeff, int _nx, int _ny,
@@ -71,7 +74,13 @@ Fluid::Fluid(EoS *_eos, EoS *_eosH, TransportCoeff *_trcoeff, int _nx, int _ny,
  dy = (maxy - miny) / (ny - 1);
  dz = (maxz - minz) / (nz - 1);
  dt = _dt;
-
+ 
+ // medium information buffer
+ medium_temp.resize(boost::extents[nx][ny][nz]);
+ medium_vx.resize(boost::extents[nx][ny][nz]);
+ medium_vy.resize(boost::extents[nx][ny][nz]);
+ medium_vz.resize(boost::extents[nx][ny][nz]);
+ 
  cell = new Cell[nx * ny * nz];
 
  cell0 = new Cell;
@@ -109,6 +118,22 @@ Fluid::~Fluid() {
  delete cell0;
 }
 
+
+/* a function to add the attrs to the group -Yingru*/
+using H5Type = H5::PredType;
+template<typename T> const H5Type& h5_type();
+template<> const H5Type& h5_type<double>() {return H5Type::NATIVE_DOUBLE;}
+template<> const H5Type& h5_type<int>() {return H5Type::NATIVE_INT;}
+
+template<typename T>
+void hdf5_add_scalar_attr(const H5::Group& group, const std::string& name, const T& value)
+{
+  const auto& datatype = h5_type<T>();
+  auto attr = group.createAttribute(name, datatype, H5::DataSpace{});
+  attr.write(datatype, &value);
+}
+
+
 void Fluid::initOutput(char *dir, int maxstep, double tau0, int cmpr2dOut) {
  //    directory = dir ;
  compress2dOut = cmpr2dOut;
@@ -118,13 +143,49 @@ void Fluid::initOutput(char *dir, int maxstep, double tau0, int cmpr2dOut) {
  int return_mkdir = system(command);
  cout << "mkdir returns: " << return_mkdir << endl;
 
+ // freezeout hypersurface, in (t,x,y,z) coordinate
  string outfreeze = dir;
  outfreeze.append("/freezeout.dat");
  ffreeze.open(outfreeze.c_str());
-
- // freezeout header file
  ffreeze << "# t x y z st sx sy sz vx vy vz pi11 pi12 pi13 pi22 pi23 pi33" << std::endl;
+
+ // medium information, in (tau, x, y, eta) coordinate
+ /*
+ string outmedium = dir;
+ outmedium.append("/hydroMedium.dat");
+ fmedium.open(outmedium.c_str());
+ fmedium << "# tau, x , y, eta, vx, vy, vz, temp, pi11, pi12, pi13, pi22, pu23, pi33" << std::endl;
+ */
  
+ // medium information, in (tau, x, y, eta) coordinate (but vx,vy,vz are all in lab-frame)
+ // output HDF5 file
+ std::string outmedium_h5 = dir;
+ outmedium_h5.append("/hydroMedium.h5");
+ h5medium = H5::H5File(outmedium_h5, H5F_ACC_TRUNC); 
+
+ const std::string groupname{"/Event"};
+ H5::Group group = h5medium.createGroup(groupname);  // create initial group
+
+ // add attributes (only add on the first frame)
+ hdf5_add_scalar_attr(group, "xmin", minx);
+ hdf5_add_scalar_attr(group, "xmax", maxx);
+ hdf5_add_scalar_attr(group, "nx", nx);
+ hdf5_add_scalar_attr(group, "dx", dx);
+
+ hdf5_add_scalar_attr(group, "ymin", miny);
+ hdf5_add_scalar_attr(group, "ymax", maxy);
+ hdf5_add_scalar_attr(group, "ny", ny);
+ hdf5_add_scalar_attr(group, "dy", dy);
+
+ hdf5_add_scalar_attr(group, "zmin", minz);
+ hdf5_add_scalar_attr(group, "zmax", maxz);
+ hdf5_add_scalar_attr(group, "nz", nz);
+ hdf5_add_scalar_attr(group, "dz", dz);   
+
+ hdf5_add_scalar_attr(group, "tau0", tau0);
+ hdf5_add_scalar_attr(group, "dtau", dt);
+
+
  // Yingru: get rid of those output files
  /*
  string outx = dir;
@@ -452,11 +513,91 @@ void Fluid::outputGnuplot(double tau) {
 // in lab.frame
 void transformToLab(double eta, double &vx, double &vy, double &vz) {
  const double Y = eta + 1. / 2. * log((1. + vz) / (1. - vz));
- const double boost = cosh(Y - eta) / cosh(Y);
- vx = vx * boost;
- vy = vy * boost;
+ const double bstFax = cosh(Y - eta) / cosh(Y);
+ vx = vx * bstFax;
+ vy = vy * bstFax;
  vz = tanh(Y);
 }
+
+// Yingru: output the medium information grid-by-grid (maybe a bit sparse_later?)
+// output the fluid medium information (vx, vy, vz, T) in (tau, x, y, eta) coordinate.
+// (but vx, vy, vx) are boosted in cartesian coordinate in the Lab-Frame
+void Fluid::outputMedium(double tau){
+// comment: currently we have maxx, maxy, maxz, minx, miny, minz, nx, ny, nz, dx, dy, dz, dt (those are the information can be written as attrs)
+// write the header:
+// minx, maxx, nx, dx; miny, maxy, ny, dy; minz, maxz, nz, dz, tau0, dtau
+    double e, p, nb, nq, ns, t, mub, muq, mus, vx, vy, vz;
+    for (int ix=0; ix<nx; ix++)
+      for (int iy=0; iy<ny; iy++)
+        for (int iz=0; iz<nz; iz++){
+            double x = getX(ix), y=getY(iy), z=getZ(iz);
+            Cell *c = getCell(ix, iy, iz);
+            getCMFvariables(c, tau, e, nb, nq, ns, vx, vy, vz);  //here two step: first get cell frame
+                                                                 //then boost to fireball frame
+                                                                 //in Lab-frame Cartesian:(vx,vy,vx)
+                                                                 // (vx, vy, tanh(vz)) vz=>Y
+            eos->eos(e, nb, nq, ns, t, mub, muq,mus, p);
+            fmedium << setw(width) << tau << setw(width) << x << setw(width) << y << setw(width) << z
+                    << setw(width) << vx << setw(width) << vy << setw(width) << tanh(vz);
+            fmedium << setw(width) << t << setw(width) << e << setw(width) << endl;
+        }
+}
+
+void Fluid::outputMedium_h5(double tau, int istep){
+  double e, p, nb, nq, ns, t, mub, muq, mus, vx, vy, vz;
+  for (int ix=0; ix<nx; ix++)
+    for (int iy=0; iy<ny; iy++)
+      for (int iz=0; iz<nz; iz++){
+        Cell *c = getCell(ix, iy, iz);
+        getCMFvariables(c, tau, e, nb, nq, ns, vx, vy, vz);
+        eos->eos(e, nb, nq, ns, t, mub, muq, mus, p);
+        medium_temp[ix][iy][iz] = t;
+        medium_vx[ix][iy][iz] = vx;
+        medium_vy[ix][iy][iz] = vy;
+        medium_vz[ix][iy][iz] = vz; 
+      }
+
+ const std::string groupname{"/Event/Frame_"+std::to_string(istep)};
+ H5::Group group = h5medium.createGroup(groupname);  // create group frame
+
+ // add attributes (only add on the first frame)
+ hdf5_add_scalar_attr(group, "time", tau);
+ 
+ const size_t rank=3;
+ hsize_t ddims[rank] = {nx,ny,nz};
+ H5::DataSpace *dataspace = new H5::DataSpace(rank, ddims); // create new dataspace
+ H5::DSetCreatPropList ds_creatplist; // create dataset creation proplist
+ ds_creatplist.setChunk(rank, ddims); // for compression
+
+ // create first dataset "temp" in the group
+ const std::string datasetname_temp{groupname + "/Temp"};
+ auto datatype(H5::PredType::NATIVE_DOUBLE);
+ H5::DataSet *dataset =new H5::DataSet( h5medium.createDataSet(datasetname_temp, datatype, *dataspace, ds_creatplist));
+ dataset->write(medium_temp.data(), datatype);
+ delete dataset;
+
+ // create second dataset "vx" in the group
+ const std::string datasetname_vx{groupname + "/vx"};
+ dataset = new H5::DataSet(h5medium.createDataSet(datasetname_vx, datatype, *dataspace, ds_creatplist));
+ dataset->write(medium_vx.data(), datatype);
+ delete dataset;
+
+ // create third dataset "vy" in the group
+ const std::string datasetname_vy{groupname + "/vy"};
+ dataset = new H5::DataSet(h5medium.createDataSet(datasetname_vy, datatype, *dataspace, ds_creatplist));
+ dataset->write(medium_vy.data(), datatype);
+ delete dataset;
+
+ // create fourth dataset "vz" in the group
+ const std::string datasetname_vz{groupname + "/vz"};
+ dataset = new H5::DataSet(h5medium.createDataSet(datasetname_vz, datatype, *dataspace, ds_creatplist));
+ dataset->write(medium_vz.data(), datatype);
+ delete dataset;
+
+ delete dataspace;
+}
+
+
 
 
 // Yingru: reduce the hypersurface output

@@ -230,6 +230,9 @@ int main(int argc, char **argv) {
  f->outputCorona(tau0);
 
   for (int istep = 0; istep < maxstep; istep++) {
+  // output the medium information
+      f->outputMedium_h5(h->getTau(), istep);
+
   // decrease timestep automatically, but use fixed dtau for output
       int nSubSteps = 1;
       while (dtau / nSubSteps > 1.0 * (tau0 + dtau * istep) * (etamax - etamin) / (nz - 1))
@@ -241,6 +244,7 @@ int main(int argc, char **argv) {
 
       // f->outputGnuplot(h->getTau()); ignore Gnuplot ignore Gnuplot
       f->outputSurface(h->getTau());
+      //f->outputMedium_h5(h->getTau(), istep);
   }
 
  end = 0;

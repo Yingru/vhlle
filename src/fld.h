@@ -1,5 +1,7 @@
 #include <iosfwd>
 #include "cll.h"
+#include <boost/multi_array.hpp>
+#include "H5Cpp.h"
 
 class EoS;
 class TransportCoeff;
@@ -22,8 +24,13 @@ private:
  double ecrit;
  double vEff, EtotSurf;  // cumulative effective volume and
  std::ofstream foutkw, foutkw_dim, foutxvisc, foutyvisc, foutdiagvisc, foutx,
-     fouty, foutdiag, foutz, fout_aniz, fout2d, ffreeze;
+     fouty, foutdiag, foutz, fout_aniz, fout2d, ffreeze, fmedium;
+
  int compress2dOut;
+
+ // buffer for output medium information -- Yingru
+ H5::H5File h5medium;
+ boost::multi_array<double, 3> medium_temp, medium_vx, medium_vy, medium_vz;
 
 public:
  Fluid(EoS *_eos, EoS *_eosH, TransportCoeff *_trcoeff, int _nx, int _ny,
@@ -68,4 +75,6 @@ public:
  void outputGnuplot(double tau);
  void outputSurface(double tau);
  void outputCorona(double tau);
+ void outputMedium(double tau);
+ void outputMedium_h5(double tau, int istep);
 };
