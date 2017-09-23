@@ -535,7 +535,7 @@ void Fluid::outputMedium(double tau){
             getCMFvariables(c, tau, e, nb, nq, ns, vx, vy, vz);  //here two step: first get cell frame
                                                                  //then boost to fireball frame
                                                                  //in Lab-frame Cartesian:(vx,vy,vx)
-                                                                 // (vx, vy, tanh(vz)) vz=>Y
+                                                                 // (vx, vy, tanh(Y)) vz=>Y
             eos->eos(e, nb, nq, ns, t, mub, muq,mus, p);
             fmedium << setw(width) << tau << setw(width) << x << setw(width) << y << setw(width) << z
                     << setw(width) << vx << setw(width) << vy << setw(width) << tanh(vz);
@@ -543,6 +543,7 @@ void Fluid::outputMedium(double tau){
         }
 }
 
+// sparse the medium a bit
 void Fluid::outputMedium_h5(double tau, int istep){
   double e, p, nb, nq, ns, t, mub, muq, mus, vx, vy, vz;
   for (int ix=0; ix<nx; ix++)
@@ -554,10 +555,17 @@ void Fluid::outputMedium_h5(double tau, int istep){
         medium_temp[ix][iy][iz] = t;
         medium_vx[ix][iy][iz] = vx;
         medium_vy[ix][iy][iz] = vy;
-        medium_vz[ix][iy][iz] = vz; 
+        medium_vz[ix][iy][iz] = tanh(vz); 
       }
 
- const std::string groupname{"/Event/Frame_"+std::to_string(istep)};
+ std::string groupname;
+ if (istep<10)
+    groupname = "/Event/Frame_00" + std::to_string(istep);
+ else if (istep<100)
+    groupname = "/Event/Frame_0" + std::to_string(istep);
+ else
+    groupname = "/Event/Frame_" + std::to_string(istep);
+
  H5::Group group = h5medium.createGroup(groupname);  // create group frame
 
  // add attributes (only add on the first frame)
