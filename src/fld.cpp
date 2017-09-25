@@ -526,36 +526,35 @@ void Fluid::outputMedium(double tau){
 // comment: currently we have maxx, maxy, maxz, minx, miny, minz, nx, ny, nz, dx, dy, dz, dt (those are the information can be written as attrs)
 // write the header:
 // minx, maxx, nx, dx; miny, maxy, ny, dy; minz, maxz, nz, dz, tau0, dtau
-    double e, p, nb, nq, ns, t, mub, muq, mus, vx, vy, vz;
+    double e, p, nb, nq, ns, t, mub, muq, mus, vx, vy, vz, Y;
     for (int ix=0; ix<nx; ix++)
       for (int iy=0; iy<ny; iy++)
         for (int iz=0; iz<nz; iz++){
             double x = getX(ix), y=getY(iy), z=getZ(iz);
             Cell *c = getCell(ix, iy, iz);
-            getCMFvariables(c, tau, e, nb, nq, ns, vx, vy, vz);  //here two step: first get cell frame
-                                                                 //then boost to fireball frame
-                                                                 //in Lab-frame Cartesian:(vx,vy,vx)
-                                                                 // (vx, vy, tanh(Y)) vz=>Y
+            getCMFvariables(c, tau, e, nb, nq, ns, vx, vy, Y);  //here two step:cell frame->fileball frame (Y) -> lab frame (vz = tanh(Y) = (vz + tanh(eta)) / (1 + vz*tanh(eta))
+            vz = tanh(Y);
             eos->eos(e, nb, nq, ns, t, mub, muq,mus, p);
             fmedium << setw(width) << tau << setw(width) << x << setw(width) << y << setw(width) << z
-                    << setw(width) << vx << setw(width) << vy << setw(width) << tanh(vz);
+                    << setw(width) << vx << setw(width) << vy << setw(width) << vz;
             fmedium << setw(width) << t << setw(width) << e << setw(width) << endl;
         }
 }
 
 // sparse the medium a bit
 void Fluid::outputMedium_h5(double tau, int istep){
-  double e, p, nb, nq, ns, t, mub, muq, mus, vx, vy, vz;
+  double e, p, nb, nq, ns, t, mub, muq, mus, vx, vy, vz, Y;
   for (int ix=0; ix<nx; ix++)
     for (int iy=0; iy<ny; iy++)
       for (int iz=0; iz<nz; iz++){
         Cell *c = getCell(ix, iy, iz);
-        getCMFvariables(c, tau, e, nb, nq, ns, vx, vy, vz);
+        getCMFvariables(c, tau, e, nb, nq, ns, vx, vy, Y);
         eos->eos(e, nb, nq, ns, t, mub, muq, mus, p);
+        vz = tanh(Y);
         medium_temp[ix][iy][iz] = t;
         medium_vx[ix][iy][iz] = vx;
         medium_vy[ix][iy][iz] = vy;
-        medium_vz[ix][iy][iz] = tanh(vz); 
+        medium_vz[ix][iy][iz] = vz;
       }
 
  std::string groupname;
