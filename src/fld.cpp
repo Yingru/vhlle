@@ -160,7 +160,7 @@ void Fluid::initOutput(char *dir, int maxstep, double tau0, int cmpr2dOut) {
  // medium information, in (tau, x, y, eta) coordinate (but vx,vy,vz are all in lab-frame)
  // output HDF5 file
  std::string outmedium_h5 = dir;
- outmedium_h5.append("/hydroMedium.h5");
+ outmedium_h5.append("/vHLLEMedium.h5");
  h5medium = H5::H5File(outmedium_h5, H5F_ACC_TRUNC); 
 
  const std::string groupname{"/Event"};
@@ -555,6 +555,7 @@ void Fluid::outputMedium_h5(double tau, int istep){
         medium_vx[ix][iy][iz] = vx;
         medium_vy[ix][iy][iz] = vy;
         medium_vz[ix][iy][iz] = vz;
+        medium_ed[ix][iy][iz] = e;
       }
 
  std::string groupname;
@@ -599,6 +600,12 @@ void Fluid::outputMedium_h5(double tau, int istep){
  const std::string datasetname_vz{groupname + "/vz"};
  dataset = new H5::DataSet(h5medium.createDataSet(datasetname_vz, datatype, *dataspace, ds_creatplist));
  dataset->write(medium_vz.data(), datatype);
+ delete dataset;
+
+ // create fifth dataset "ed" in the group
+ const std::string datasetname_ed{groupname + "/ed"};
+ dataset = new h5::DataSet(h5medium.createDataSet(datasetname_ed, datatype, *dataspace, ds_creatplist));
+ dataset->write(medium_ed.data(), datatype);
  delete dataset;
 
  delete dataspace;

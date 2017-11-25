@@ -30,7 +30,7 @@ private:
 
  // buffer for output medium information -- Yingru
  H5::H5File h5medium;
- boost::multi_array<double, 3> medium_temp, medium_vx, medium_vy, medium_vz;
+ boost::multi_array<double, 3> medium_temp, medium_vx, medium_vy, medium_vz, medium_ed;
 
 public:
  Fluid(EoS *_eos, EoS *_eosH, TransportCoeff *_trcoeff, int _nx, int _ny,
