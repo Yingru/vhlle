@@ -44,8 +44,10 @@ void EoS_hotqcd::eos(double e, double nb, double nq, double ns,
     if (e > e_min) index_e = std::floor((e-e_min)/devene);
     if (e <= e_min)
     {
-        T = ttab[0];
-        p = ptab[0];
+        //T = ttab[0];
+        //p = ptab[0];
+        T = 0.;
+        p = 0.;
         return;
     }
     if (index_e > etab.size() -2)
@@ -66,7 +68,8 @@ double EoS_hotqcd::p(double e, double nb, double nq, double ns)
 {
     int index_e = 0;
     if (e <= e_min) 
-        return ptab[0];
+        //return ptab[0];
+        return 0.;
     else
     {
         index_e = std::floor((e-e_min)/devene);
