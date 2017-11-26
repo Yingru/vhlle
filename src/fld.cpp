@@ -604,7 +604,7 @@ void Fluid::outputMedium_h5(double tau, int istep){
 
  // create fifth dataset "ed" in the group
  const std::string datasetname_ed{groupname + "/ed"};
- dataset = new h5::DataSet(h5medium.createDataSet(datasetname_ed, datatype, *dataspace, ds_creatplist));
+ dataset = new H5::DataSet(h5medium.createDataSet(datasetname_ed, datatype, *dataspace, ds_creatplist));
  dataset->write(medium_ed.data(), datatype);
  delete dataset;
 
